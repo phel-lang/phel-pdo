@@ -1,0 +1,4 @@
+(ns smeghead\pdo)
+
+(defn create-pdo [dsn & [username password options]]
+  (php/new \PDO dsn username password options))

@@ -1,0 +1,7 @@
+(ns smeghead\tests\pdo-initail
+  (:require phel\test :refer [deftest is])
+  (:require smeghead\pdo))
+
+(deftest test-initial
+  (let [db (pdo/create-pdo "sqlite::memory:")]
+    (is (not= nil db))))

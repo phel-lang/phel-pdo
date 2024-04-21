@@ -1,0 +1,26 @@
+{
+    "name": "smeghead/phel-pdo",
+    "description": "phel-lang pdo wrapper library.",
+    "type": "library",
+    "require": {
+        "php": ">=8.2",
+        "phel-lang/phel-lang": "^0.13"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Smeghead\\PhelPdo\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "smeghead",
+            "email": "smeghead7@gmail.com"
+        }
+    ],
+    "scripts": {
+        "test": [
+            "vendor/bin/phel test"
+        ]
+    }
+}
