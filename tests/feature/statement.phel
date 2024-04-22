@@ -1,14 +1,9 @@
-(ns smeghead\tests\pdo-initail
+(ns smeghead\tests\statement
   (:require phel\test :refer [deftest is])
   (:require smeghead\pdo)
   (:require smeghead\pdo\statement))
 
-(deftest test-initial
-  (let [conn (pdo/connect "sqlite::memory:")]
-    (is (struct? conn))
-    (is (not= nil conn))))
-
-(deftest test-simple-table-definition
+(deftest test-fetch-all
   (let [conn (pdo/connect "sqlite::memory:")]
     (is (= 0 (pdo/exec
                conn
@@ -16,5 +11,8 @@
     (is (= 1 (pdo/exec
                conn
                "insert into t1 (name) values ('phel')")))
-    (let [stmt (pdo/query conn "select * from t1 where id = 1")]
-      (is (= {"id" 1 "name" "phel"} (statement/fetch stmt))))))
+    (is (= 1 (pdo/exec
+               conn
+               "insert into t1 (name) values ('php')")))
+    (let [stmt (pdo/query conn "select * from t1")]
+      (is (= [{"id" 1 "name" "phel"} {"id" 2 "name" "php"}] (statement/fetch-all stmt))))))

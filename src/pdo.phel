@@ -18,3 +18,30 @@
   "Prepares and executes an SQL statement without placeholders"
   [conn stmt & [fetch-mode]]
   (statement/statement (php/-> (conn :pdo) (query stmt))))
+
+(defn begin
+  "Initiates a transaction"
+  [conn]
+  (php/-> (conn :pdo) (beginTransaction)))
+
+(defn rollback
+  "Rolls back a transaction"
+  [conn]
+  (php/-> (conn :pdo) (rollback)))
+
+(defn commit
+  "Commits a transaction"
+  [conn]
+  (php/-> (conn :pdo) (commit)))
+
+# not implement yet.
+
+#PDO::errorCode — Fetch the SQLSTATE associated with the last operation on the database handle
+#PDO::errorInfo — Fetch extended error information associated with the last operation on the database handle
+#PDO::getAttribute — Retrieve a database connection attribute
+#PDO::getAvailableDrivers — Return an array of available PDO drivers
+#PDO::inTransaction — Checks if inside a transaction
+#PDO::lastInsertId — Returns the ID of the last inserted row or sequence value
+#PDO::prepare — Prepares a statement for execution and returns a statement object
+#PDO::quote — Quotes a string for use in a query
+#PDO::setAttribute — Set an attribute

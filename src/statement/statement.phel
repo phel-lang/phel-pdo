@@ -3,10 +3,44 @@
 (defstruct statement [stmt])
 
 (defn fetch
-  ""
-  [statement & [fetch-mode]]
+  "Fetches the next row from a result set"
+  [statement & [fetch-mode cursor-orientation cursor-offset]]
   (php-array-to-map
     (php/->
       (statement :stmt)
       (fetch (or fetch-mode (php/:: \PDO FETCH_ASSOC))))))
 
+(defn fetch-column
+  "Returns a single column from the next row of a result set"
+  [statement & [column]]
+  (php/->
+    (statement :stmt)
+    (fetchColumn (or column 0))))
+
+(defn fetch-all
+  "Fetches the remaining rows from a result set"
+  [statement & [fetch-mode cursor-orientation cursor-offset]]
+  (map php-array-to-map
+    (php/->
+      (statement :stmt)
+      (fetchAll (or fetch-mode (php/:: \PDO FETCH_ASSOC))))))
+
+# not implement yet.
+
+#PDOStatement::bindColumn — Bind a column to a PHP variable
+#PDOStatement::bindParam — Binds a parameter to the specified variable name
+#PDOStatement::bindValue — Binds a value to a parameter
+#PDOStatement::closeCursor — Closes the cursor, enabling the statement to be executed again
+#PDOStatement::columnCount — Returns the number of columns in the result set
+#PDOStatement::debugDumpParams — Dump an SQL prepared command
+#PDOStatement::errorCode — Fetch the SQLSTATE associated with the last operation on the statement handle
+#PDOStatement::errorInfo — Fetch extended error information associated with the last operation on the statement handle
+#PDOStatement::execute — Executes a prepared statement
+#PDOStatement::fetchObject — Fetches the next row and returns it as an object
+#PDOStatement::getAttribute — Retrieve a statement attribute
+#PDOStatement::getColumnMeta — Returns metadata for a column in a result set
+#PDOStatement::getIterator — Gets result set iterator
+#PDOStatement::nextRowset — Advances to the next rowset in a multi-rowset statement handle
+#PDOStatement::rowCount — Returns the number of rows affected by the last SQL statement
+#PDOStatement::setAttribute — Set a statement attribute
+#PDOStatement::setFetchMode — Set the default fetch mode for this statement
