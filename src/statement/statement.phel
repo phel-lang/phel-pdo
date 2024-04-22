@@ -1,0 +1,12 @@
+(ns smeghead\pdo\statement)
+
+(defstruct statement [stmt])
+
+(defn fetch
+  ""
+  [statement & [fetch-mode]]
+  (php-array-to-map
+    (php/->
+      (statement :stmt)
+      (fetch (or fetch-mode (php/:: \PDO FETCH_ASSOC))))))
+

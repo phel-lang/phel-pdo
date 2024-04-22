@@ -1,4 +1,20 @@
-(ns smeghead\pdo)
+(ns smeghead\pdo
+  (:require smeghead\pdo\statement))
 
-(defn create-pdo [dsn & [username password options]]
-  (php/new \PDO dsn username password options))
+(defstruct connection [pdo])
+
+(defn connect
+  "Connect database and return connection object.
+  Throws a PDOException if the attempt to connect to the requested database fails "
+  [dsn & [username password options]]
+  (connection (php/new \PDO dsn username password options)))
+
+(defn exec
+  "Execute an SQL statement and return the number of affected rows"
+  [conn stmt]
+  (php/-> (conn :pdo) (exec stmt)))
+
+(defn query
+  "Prepares and executes an SQL statement without placeholders"
+  [conn stmt & [fetch-mode]]
+  (statement/statement (php/-> (conn :pdo) (query stmt))))
