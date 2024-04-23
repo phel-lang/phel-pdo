@@ -15,4 +15,4 @@
                conn
                "insert into t1 (name) values ('php')")))
     (let [stmt (pdo/query conn "select * from t1")]
-      (is (= [{"id" 1 "name" "phel"} {"id" 2 "name" "php"}] (statement/fetch-all stmt))))))
+      (is (= [{:id 1 :name "phel"} {:id 2 :name "php"}] (statement/fetch-all stmt))))))

@@ -55,5 +55,4 @@
 #PDO::inTransaction — Checks if inside a transaction
 #PDO::lastInsertId — Returns the ID of the last inserted row or sequence value
 #PDO::prepare — Prepares a statement for execution and returns a statement object
-#PDO::quote — Quotes a string for use in a query
 #PDO::setAttribute — Set an attribute

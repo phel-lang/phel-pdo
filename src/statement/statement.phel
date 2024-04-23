@@ -2,13 +2,23 @@
 
 (defstruct statement [stmt])
 
+(defn- map-key-to-keyowrd [row]
+  (let [row (php-array-to-map row)]
+    (loop [ps (keys row)
+           acc {}]
+      (if (empty? ps)
+        acc
+        (recur
+          (rest ps)
+          (put acc (keyword (first ps)) (row (first ps))))))))
+
 (defn fetch
   "Fetches the next row from a result set"
-  [statement & [fetch-mode cursor-orientation cursor-offset]]
-  (php-array-to-map
+  [statement]
+  (map-key-to-keyowrd
     (php/->
       (statement :stmt)
-      (fetch (or fetch-mode (php/:: \PDO FETCH_ASSOC))))))
+      (fetch (php/:: \PDO FETCH_ASSOC)))))
 
 (defn fetch-column
   "Returns a single column from the next row of a result set"
@@ -19,11 +29,11 @@
 
 (defn fetch-all
   "Fetches the remaining rows from a result set"
-  [statement & [fetch-mode cursor-orientation cursor-offset]]
-  (map php-array-to-map
+  [statement]
+  (map map-key-to-keyowrd
     (php/->
       (statement :stmt)
-      (fetchAll (or fetch-mode (php/:: \PDO FETCH_ASSOC))))))
+      (fetchAll (php/:: \PDO FETCH_ASSOC)))))
 
 (defn- map-key-to-string [params]
   (loop [ps (keys params)

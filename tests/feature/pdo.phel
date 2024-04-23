@@ -17,7 +17,7 @@
                conn
                "insert into t1 (name) values ('phel')")))
     (let [stmt (pdo/query conn "select * from t1 where id = 1")]
-      (is (= {"id" 1 "name" "phel"} (statement/fetch stmt))))))
+      (is (= {:id 1 :name "phel"} (statement/fetch stmt))))))
 
 (deftest test-simple-prepare-select
   (let [conn (pdo/connect "sqlite::memory:")]
