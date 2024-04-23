@@ -8,7 +8,7 @@
     (is (struct? conn))
     (is (not= nil conn))))
 
-(deftest test-simple-table-definition
+(deftest test-simple-select
   (let [conn (pdo/connect "sqlite::memory:")]
     (is (= 0 (pdo/exec
                conn
@@ -18,6 +18,33 @@
                "insert into t1 (name) values ('phel')")))
     (let [stmt (pdo/query conn "select * from t1 where id = 1")]
       (is (= {"id" 1 "name" "phel"} (statement/fetch stmt))))))
+
+(deftest test-simple-prepare-select
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= 0 (pdo/exec
+               conn
+               "create table t1 (id integer primary key autoincrement, name varchr(10))")))
+    (is (pdo/begin conn))
+    (is (= 1 (pdo/exec
+               conn
+               "insert into t1 (name) values ('phel')")))
+    (is (pdo/commit conn))
+    (let [stmt (pdo/query conn "select count(*) from t1 where id = 1")]
+      (is (= 1 (statement/fetch-column stmt))))))
+
+(deftest test-simple-prepare-select-with-params
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= 0 (pdo/exec
+               conn
+               "create table t1 (id integer primary key autoincrement, name varchr(10))")))
+    (is (pdo/begin conn))
+    (is (= 1 (pdo/exec
+               conn
+               "insert into t1 (name) values ('phel')")))
+    (is (pdo/commit conn))
+    (let [stmt (pdo/prepare conn "select count(*) from t1 where id = :id")
+          stmt (statement/execute stmt {:id 1})]
+      (is (= 1 (statement/fetch-column stmt))))))
 
 (deftest test-simple-rollback
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -44,3 +71,9 @@
     (is (pdo/commit conn))
     (let [stmt (pdo/query conn "select count(*) from t1 where id = 1")]
       (is (= 1 (statement/fetch-column stmt))))))
+
+(deftest test-quote
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= "'I''m fine.'" (pdo/quote conn "I'm fine.")))))
+
+

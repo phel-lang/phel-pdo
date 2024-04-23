@@ -25,6 +25,25 @@
       (statement :stmt)
       (fetchAll (or fetch-mode (php/:: \PDO FETCH_ASSOC))))))
 
+(defn- map-key-to-string [params]
+  (loop [ps (keys params)
+         acc {}]
+    (if (empty? ps)
+      (to-php-array acc)
+      (recur
+        (rest ps)
+        (put acc (format "%s" (first ps)) (params (first ps)))))))
+
+(defn execute
+  "Executes a prepared statement"
+  [statement & [params]]
+  (let [params (map-key-to-string params)]
+    (php/->
+      (statement :stmt)
+      (execute params))
+    statement))
+
+
 # not implement yet.
 
 #PDOStatement::bindColumn — Bind a column to a PHP variable
@@ -35,7 +54,6 @@
 #PDOStatement::debugDumpParams — Dump an SQL prepared command
 #PDOStatement::errorCode — Fetch the SQLSTATE associated with the last operation on the statement handle
 #PDOStatement::errorInfo — Fetch extended error information associated with the last operation on the statement handle
-#PDOStatement::execute — Executes a prepared statement
 #PDOStatement::fetchObject — Fetches the next row and returns it as an object
 #PDOStatement::getAttribute — Retrieve a statement attribute
 #PDOStatement::getColumnMeta — Returns metadata for a column in a result set

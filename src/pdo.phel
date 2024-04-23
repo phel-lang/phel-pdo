@@ -7,17 +7,24 @@
   "Connect database and return connection object.
   Throws a PDOException if the attempt to connect to the requested database fails "
   [dsn & [username password options]]
-  (connection (php/new \PDO dsn username password options)))
+  (let [conn (connection (php/new \PDO dsn username password options))]
+    (php/-> (conn :pdo) (setAttribute (php/:: \PDO ATTR_ERRMODE) (php/:: \PDO ERRMODE_EXCEPTION)))
+    conn))
 
 (defn exec
   "Execute an SQL statement and return the number of affected rows"
   [conn stmt]
   (php/-> (conn :pdo) (exec stmt)))
 
+(defn prepare
+  "Prepares a statement for execution and returns a statement object"
+  [conn stmt & [options]]
+  (statement/statement (php/-> (conn :pdo) (prepare stmt (to-php-array (or options {}))))))
+
 (defn query
   "Prepares and executes an SQL statement without placeholders"
   [conn stmt & [fetch-mode]]
-  (statement/statement (php/-> (conn :pdo) (query stmt))))
+  (statement/statement (php/-> (conn :pdo) (query stmt (or fetch-mode (php/:: \PDO FETCH_ASSOC))))))
 
 (defn begin
   "Initiates a transaction"
@@ -33,6 +40,11 @@
   "Commits a transaction"
   [conn]
   (php/-> (conn :pdo) (commit)))
+
+(defn quote
+  "Quotes a string for use in a query"
+  [conn string & [type]]
+  (php/-> (conn :pdo) (quote string (or type (php/:: \PDO PARAM_STR)))))
 
 # not implement yet.
 
