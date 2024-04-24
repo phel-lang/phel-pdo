@@ -7,7 +7,7 @@ phel-lang pdo wrapper library.
 This is an example of connecting to a file database, creating a table, inserting records, and searching on repl.
 
 ```
-iphel:1> (require smeghead\pdo)
+phel:1> (require smeghead\pdo)
 smeghead\pdo
 phel:2> (require smeghead\pdo\statement)
 smeghead\pdo\statement
@@ -22,6 +22,12 @@ phel:6> (pdo/exec conn "insert into t1 (name) values ('phel'), ('php')")
 phel:7> (def stmt (pdo/query conn "select * from t1 where id = 1"))
 1
 phel:8> (statement/fetch stmt)
+{:id 1 :name phel}
+phel:8> (def stmt (pdo/prepare conn "select * from t1 where id = :id"))
+1
+phel:9> (def stmt (statement/execute stmt {:id 1}))
+1
+phel:10> (statement/fetch stmt)
 {:id 1 :name phel}
 ```
 
