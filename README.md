@@ -6,7 +6,7 @@ phel-lang pdo wrapper library.
 
 This is an example of connecting to a file database, creating a table, inserting records, and searching on repl.
 
-```
+```clojure
 phel:1> (require smeghead\pdo)
 smeghead\pdo
 phel:2> (require smeghead\pdo\statement)
