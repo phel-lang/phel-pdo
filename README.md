@@ -2,6 +2,14 @@
 
 phel-lang pdo wrapper library.
 
+## Install
+
+Install from composer. https://packagist.org/packages/smeghead/phel-pdo
+
+```bash
+composer require smeghead/phel-pdo
+```
+
 ## Usage
 
 This is an example of connecting to a file database, creating a table, inserting records, and searching on repl.
