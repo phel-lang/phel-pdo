@@ -2,6 +2,10 @@
     "name": "smeghead/phel-pdo",
     "description": "phel-lang pdo wrapper library.",
     "type": "library",
+    "keywords": [
+        "phel",
+        "PDO"
+    ],
     "require": {
         "php": ">=8.2",
         "phel-lang/phel-lang": "^0.13"
