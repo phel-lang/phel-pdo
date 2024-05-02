@@ -76,4 +76,65 @@
   (let [conn (pdo/connect "sqlite::memory:")]
     (is (= "'I''m fine.'" (pdo/quote conn "I'm fine.")))))
 
+(deftest test-last-insert-id
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= 0 (pdo/exec
+               conn
+               "create table t1 (id integer primary key autoincrement, name varchr(10))")))
+    (is (= 1 (pdo/exec
+               conn
+               "insert into t1 (name) values ('phel')")))
+    (is (= 1 (pdo/last-insert-id conn)))))
 
+(deftest test-error-code
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= 0 (pdo/exec
+               conn
+               "create table t1 (id integer primary key autoincrement, name varchr(10))")))
+    (is (= 1 (pdo/exec
+               conn
+               "insert into t1 (name) values ('phel')")))
+    (try
+      (pdo/exec
+        conn
+        "insert into t1 (id, name) values (1, 'php')")
+      (catch \PDOException e "error"))
+    (is (= 23000 (pdo/error-code conn)))))
+
+(deftest test-error-info
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= 0 (pdo/exec
+               conn
+               "create table t1 (id integer primary key autoincrement, name varchr(10))")))
+    (is (= 1 (pdo/exec
+               conn
+               "insert into t1 (name) values ('phel')")))
+    (try
+      (pdo/exec
+        conn
+        "insert into t1 (id, name) values (1, 'php')")
+      (catch \PDOException e "error"))
+    (is (= [23000 19 "UNIQUE constraint failed: t1.id"] (pdo/error-info conn)))))
+
+(deftest test-attribute
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (pdo/set-attribute
+               conn
+               (php/:: \PDO ATTR_ERRMODE)
+               (php/:: \PDO ERRMODE_SILENT))
+    (is (= (php/:: \PDO ERRMODE_SILENT)
+           (pdo/get-attribute
+             conn
+             (php/:: \PDO ATTR_ERRMODE))))))
+
+(deftest test-in-transaction
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= false (pdo/in-transaction conn)))
+    (is (pdo/begin conn))
+    (is (= true (pdo/in-transaction conn)))
+    (is (pdo/commit conn))
+    (is (= false (pdo/in-transaction conn)))))
+
+(deftest test-get-available-drivers
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= ["sqlite"] (pdo/get-available-drivers conn)))))
