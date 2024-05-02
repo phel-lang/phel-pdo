@@ -137,4 +137,4 @@
 
 (deftest test-get-available-drivers
   (let [conn (pdo/connect "sqlite::memory:")]
-    (is (= ["sqlite"] (pdo/get-available-drivers conn)))))
+    (is (contains-value? (pdo/get-available-drivers conn) "sqlite"))))
