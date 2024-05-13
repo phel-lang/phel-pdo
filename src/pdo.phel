@@ -82,6 +82,3 @@
   [conn]
   (values (php-array-to-map (php/-> (conn :pdo) (getAvailableDrivers)))))
 
-# not implement yet.
-
-#PDO::getAvailableDrivers — Return an array of available PDO drivers

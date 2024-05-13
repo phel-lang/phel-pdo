@@ -2,6 +2,15 @@
 
 phel-lang pdo wrapper library.
 
+## Description
+
+With phel, it is very easy to call functions of originally PHP classes.
+Therefore, it is not difficult to use PDO directly.
+
+However, if you have to think about PHP classes while writing phel code, there is a concern that a context switch will occur between the phel world and the PHP world, and you will not be able to concentrate on writing the phel code.
+
+Therefore, I created a wrapper library that can handle PDO just by calling functions in the phel world.
+
 ## Install
 
 Install from composer. https://packagist.org/packages/smeghead/phel-pdo
@@ -37,6 +46,169 @@ phel:9> (def stmt (statement/execute stmt {:id 1}))
 1
 phel:10> (statement/fetch stmt)
 {:id 1 :name phel}
+```
+
+## Reference
+
+### pdo
+
+Represents a connection between PHP and a database server.
+
+####  begin
+
+Initiates a transaction
+
+```clojure
+(begin conn)
+```
+
+####  commit
+
+Commits a transaction
+
+```clojure
+(commit conn)
+```
+
+####  connect
+
+Connect database and return connection object.
+Throws a PDOException if the attempt to connect to the requested database fails
+
+```clojure
+(connect dns & [username password options])
+```
+
+####  error-code
+
+Fetch the SQLSTATE associated with the last operation on the database handle
+
+```clojure
+(error-code conn)
+```
+
+####  error-info
+
+Fetch extended error information associated with the last operation on the database handle
+
+```clojure
+(error-info conn)
+```
+
+####  exec
+
+Execute an SQL statement and return the number of affected rows
+
+```clojure
+(exec conn stmt & [fetch-mode])
+```
+
+####  get-attribute
+
+Retrieve a database connection attribute
+
+```clojure
+(get-attribute conn attribute)
+```
+
+####  get-available-drivers
+
+Return an array of available PDO drivers
+
+```clojure
+(get-available-drivers conn)
+```
+
+####  in-transaction
+
+Checks if inside a transaction
+
+```clojure
+(in-transaction conn)
+```
+
+####  last-insert-id
+
+Returns the ID of the last inserted row or sequence value
+
+```clojure
+(last-insert-id conn)
+```
+
+####  prepare
+
+Prepares a statement for execution and returns a statement object
+
+```clojure
+(prepare conn stmt & [fetch-mode])
+```
+
+####  query
+
+Prepares and executes an SQL statement without placeholders
+
+```clojure
+(query conn stmt & [fetch-mode])
+```
+
+####  quote
+
+Quotes a string for use in a query
+
+```clojure
+(query conn string & [type])
+```
+
+####  rollback
+
+Rolls back a transaction
+
+```clojure
+(rollback conn)
+```
+
+####  set-attribute
+
+Set an attribute
+
+```clojure
+(set-attribute conn attribute value)
+```
+
+### statement
+
+Represents a prepared statement and, after the statement is executed, an associated result set.
+
+#### execute
+
+Executes a prepared statement
+
+```clojure
+(execute statement)
+```
+
+#### fetch
+
+Fetches the next row from a result set
+
+```clojure
+(fetch statement)
+```
+
+#### fetch-all
+
+Fetches the remaining rows from a result set
+
+```clojure
+(fetch-all statement)
+```
+
+#### fetch-column
+
+Returns a single column from the next row of a result set
+
+```clojure
+(fetch-column statement & [column])
 ```
 
 
