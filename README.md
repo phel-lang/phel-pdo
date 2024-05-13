@@ -4,12 +4,12 @@ phel-lang pdo wrapper library.
 
 ## Description
 
-With phel, it is very easy to call functions of originally PHP classes.
-Therefore, it is not difficult to use PDO directly.
+
+Inherently, it is very easy to call the functionality of PHP classes from phel code. Therefore, it is not difficult to access the database using PDO directly.
 
 However, if you have to think about PHP classes while writing phel code, there is a concern that a context switch will occur between the phel world and the PHP world, and you will not be able to concentrate on writing the phel code.
 
-Therefore, I created a wrapper library that can handle PDO just by calling functions in the phel world.
+Therefore, I created a wrapper library (phel-pdo) that can handle PDO just by calling Phel functions.
 
 ## Install
 
