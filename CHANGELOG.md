@@ -5,6 +5,7 @@
 ### Features
 
  * Added a note in the README that it will be migrated to the phel-lang organization.
+ * Moved `statement.phel` directly under `src`.
 
 ## v0.0.1 (2024-05-02)
 
