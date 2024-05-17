@@ -2,6 +2,10 @@
 
 phel-lang pdo wrapper library.
 
+> **Notice**: This library is currently being prepared for migration to the phel-lang organization.
+>
+> After migration, it will be accessible as `phel-lang/phel-pdo`.
+
 ## Description
 
 
