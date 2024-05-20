@@ -183,6 +183,14 @@ Set an attribute
 
 Represents a prepared statement and, after the statement is executed, an associated result set.
 
+#### bind-value
+
+Binds a value to a parameter
+
+```clojure
+(bind-value statement column value & [type])
+```
+
 #### execute
 
 Executes a prepared statement

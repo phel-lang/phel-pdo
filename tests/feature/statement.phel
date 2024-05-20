@@ -16,3 +16,53 @@
                "insert into t1 (name) values ('php')")))
     (let [stmt (pdo/query conn "select * from t1")]
       (is (= [{:id 1 :name "phel"} {:id 2 :name "php"}] (statement/fetch-all stmt))))))
+
+(deftest test-column-count
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= 0 (pdo/exec
+               conn
+               "create table t1 (id integer primary key autoincrement, name varchr(10))")))
+    (is (= 1 (pdo/exec
+               conn
+               "insert into t1 (name) values ('phel')")))
+    (let [stmt (pdo/query conn "select * from t1")]
+      (is (= 2 (statement/column-count stmt))))))
+
+(deftest test-row-count
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= 0 (pdo/exec
+               conn
+               "create table t1 (id integer primary key autoincrement, name varchr(10))")))
+    (let [stmt (pdo/query conn "insert into t1 (name) values ('phel'), ('php')")]
+      (is (= 2 (statement/row-count stmt))))))
+
+(deftest test-bind-value
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= 0 (pdo/exec
+               conn
+               "create table t1 (id integer primary key autoincrement, name varchr(10))")))
+    (is (= 1 (pdo/exec
+               conn
+               "insert into t1 (name) values ('phel')")))
+    (let [stmt (pdo/prepare conn "select * from t1 where id = :id")
+          stmt (statement/bind-value stmt :id 1)
+          stmt (statement/execute stmt)]
+      (is (= {:id 1 :name "phel"} (statement/fetch stmt))))))
+
+(deftest test-bind-value-with-type
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= 0 (pdo/exec
+               conn
+               "create table t1 (id integer primary key autoincrement, name varchr(10))")))
+    (is (= 1 (pdo/exec
+               conn
+               "insert into t1 (name) values ('phel')")))
+    (let [stmt (pdo/prepare conn "select * from t1 where id = :id")
+          stmt (statement/bind-value stmt :id 1 (php/:: \PDO PARAM_INT))
+          stmt (statement/execute stmt)]
+      (is (= {:id 1 :name "phel"} (statement/fetch stmt))))
+    (let [stmt (pdo/prepare conn "select * from t1 where name = :name")
+          stmt (statement/bind-value stmt :name "phel" (php/:: \PDO PARAM_STR))
+          stmt (statement/execute stmt)]
+      (is (= {:id 1 :name "phel"} (statement/fetch stmt))))))
+

@@ -47,12 +47,31 @@
 (defn execute
   "Executes a prepared statement"
   [statement & [params]]
-  (let [params (map-key-to-string params)]
-    (php/->
-      (statement :stmt)
-      (execute params))
-    statement))
+  (if (empty? params)
+    (php/-> (statement :stmt) (execute))
+    (let [params (map-key-to-string params)]
+      (php/->
+        (statement :stmt)
+        (execute params))))
+  statement)
 
+(defn column-count
+  "Returns the number of columns in the result set"
+  [statement]
+  (php/-> (statement :stmt) (columnCount)))
+
+(defn row-count
+  "Returns the number of rows affected by the last SQL statement"
+  [statement]
+  (php/-> (statement :stmt) (rowCount)))
+
+(defn bind-value
+  "Binds a value to a parameter"
+  [statement column value & [type]]
+  (php/->
+    (statement :stmt)
+    (bindValue (str column) value (or type (php/:: \PDO PARAM_STR))))
+  statement)
 
 # not implement yet.
 
@@ -60,7 +79,6 @@
 #PDOStatement::bindParam — Binds a parameter to the specified variable name
 #PDOStatement::bindValue — Binds a value to a parameter
 #PDOStatement::closeCursor — Closes the cursor, enabling the statement to be executed again
-#PDOStatement::columnCount — Returns the number of columns in the result set
 #PDOStatement::debugDumpParams — Dump an SQL prepared command
 #PDOStatement::errorCode — Fetch the SQLSTATE associated with the last operation on the statement handle
 #PDOStatement::errorInfo — Fetch extended error information associated with the last operation on the statement handle
@@ -69,6 +87,5 @@
 #PDOStatement::getColumnMeta — Returns metadata for a column in a result set
 #PDOStatement::getIterator — Gets result set iterator
 #PDOStatement::nextRowset — Advances to the next rowset in a multi-rowset statement handle
-#PDOStatement::rowCount — Returns the number of rows affected by the last SQL statement
 #PDOStatement::setAttribute — Set a statement attribute
 #PDOStatement::setFetchMode — Set the default fetch mode for this statement
