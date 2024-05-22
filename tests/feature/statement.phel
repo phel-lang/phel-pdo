@@ -66,3 +66,17 @@
           stmt (statement/execute stmt)]
       (is (= {:id 1 :name "phel"} (statement/fetch stmt))))))
 
+(deftest test-debug-dump-params
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= 0 (pdo/exec
+               conn
+               "create table t1 (id integer primary key autoincrement, name varchr(10))")))
+    (is (= 1 (pdo/exec
+               conn
+               "insert into t1 (name) values ('phel')")))
+    (let [stmt (pdo/prepare conn "select * from t1 where name = :name")
+          stmt (statement/bind-value stmt :name "phel" (php/:: \PDO PARAM_STR))
+          info (statement/debug-dump-params stmt)
+          lines (values (php-array-to-map (php/preg_split "/\r\n|\r|\n/" info)))]
+      (is (= "SQL: [35] select * from t1 where name = :name" (lines 0))))))
+

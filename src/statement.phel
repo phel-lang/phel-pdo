@@ -73,13 +73,18 @@
     (bindValue (str column) value (or type (php/:: \PDO PARAM_STR))))
   statement)
 
+(defn debug-dump-params
+  "Returns an SQL prepared command"
+  [statement]
+  (php/ob_start)
+  (php/-> (statement :stmt) (debugDumpParams))
+  (php/ob_get_clean))
+
 # not implement yet.
 
 #PDOStatement::bindColumn — Bind a column to a PHP variable
 #PDOStatement::bindParam — Binds a parameter to the specified variable name
-#PDOStatement::bindValue — Binds a value to a parameter
 #PDOStatement::closeCursor — Closes the cursor, enabling the statement to be executed again
-#PDOStatement::debugDumpParams — Dump an SQL prepared command
 #PDOStatement::errorCode — Fetch the SQLSTATE associated with the last operation on the statement handle
 #PDOStatement::errorInfo — Fetch extended error information associated with the last operation on the statement handle
 #PDOStatement::fetchObject — Fetches the next row and returns it as an object

@@ -191,6 +191,14 @@ Binds a value to a parameter
 (bind-value statement column value & [type])
 ```
 
+#### debug-dump-params
+
+Returns an SQL prepared command
+
+```clojure
+(debug-dump-params statement)
+```
+
 #### execute
 
 Executes a prepared statement

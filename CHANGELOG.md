@@ -3,6 +3,7 @@
 ### Features
 
  * Implemented statement bind-value method.
+ * Implemented statement debug-dump-params method.
 
 ## v0.0.2 (2024-05-17)
 
