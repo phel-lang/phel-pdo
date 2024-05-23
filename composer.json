@@ -1,5 +1,5 @@
 {
-    "name": "smeghead/phel-pdo",
+    "name": "phel-lang/phel-pdo",
     "description": "phel-lang pdo wrapper library.",
     "type": "library",
     "keywords": [
@@ -13,7 +13,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Smeghead\\PhelPdo\\": "src/"
+            "Phel\\PhelPdo\\": "src/"
         }
     },
     "authors": [

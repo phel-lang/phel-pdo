@@ -1,7 +1,7 @@
-(ns smeghead\tests\pdo-initail
+(ns phel\tests\pdo-initail
   (:require phel\test :refer [deftest is])
-  (:require smeghead\pdo)
-  (:require smeghead\pdo\statement))
+  (:require phel\pdo)
+  (:require phel\pdo\statement))
 
 (deftest test-initial
   (let [conn (pdo/connect "sqlite::memory:")]

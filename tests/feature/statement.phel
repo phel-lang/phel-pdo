@@ -1,7 +1,7 @@
-(ns smeghead\tests\statement
+(ns phel\tests\statement
   (:require phel\test :refer [deftest is])
-  (:require smeghead\pdo)
-  (:require smeghead\pdo\statement))
+  (:require phel\pdo)
+  (:require phel\pdo\statement))
 
 (deftest test-fetch-all
   (let [conn (pdo/connect "sqlite::memory:")]

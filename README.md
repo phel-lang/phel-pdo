@@ -17,10 +17,10 @@ Therefore, I created a wrapper library (phel-pdo) that can handle PDO just by ca
 
 ## Install
 
-Install from composer. https://packagist.org/packages/smeghead/phel-pdo
+Install from composer. https://packagist.org/packages/phel-lang/phel-pdo
 
 ```bash
-composer require smeghead/phel-pdo
+composer require phel/phel-pdo
 ```
 
 ## Usage
@@ -28,10 +28,10 @@ composer require smeghead/phel-pdo
 This is an example of connecting to a file database, creating a table, inserting records, and searching on repl.
 
 ```clojure
-phel:1> (require smeghead\pdo)
-smeghead\pdo
-phel:2> (require smeghead\pdo\statement)
-smeghead\pdo\statement
+phel:1> (require phel\pdo)
+phel\pdo
+phel:2> (require phel\pdo\statement)
+phel\pdo\statement
 phel:3> (def connection-string "sqlite:database.db")
 1
 phel:4> (def conn (pdo/connect connection-string))

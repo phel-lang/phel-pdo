@@ -1,5 +1,5 @@
-(ns smeghead\pdo
-  (:require smeghead\pdo\statement))
+(ns phel\pdo
+  (:require phel\pdo\statement))
 
 (defstruct connection [pdo])
 
