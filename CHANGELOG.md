@@ -1,5 +1,7 @@
 # CHANGELOG
 
+## v0.0.3 (2024-05-23)
+
 ### Features
 
  * Implemented statement bind-value method.
