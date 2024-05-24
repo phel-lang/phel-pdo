@@ -2,10 +2,6 @@
 
 phel-lang pdo wrapper library.
 
-> **Notice**: This library is currently being prepared for migration to the phel-lang organization.
->
-> After migration, it will be accessible as `phel-lang/phel-pdo`.
-
 ## Description
 
 
@@ -20,7 +16,7 @@ Therefore, I created a wrapper library (phel-pdo) that can handle PDO just by ca
 Install from composer. https://packagist.org/packages/phel-lang/phel-pdo
 
 ```bash
-composer require phel/phel-pdo
+composer require phel-lang/phel-pdo
 ```
 
 ## Usage
@@ -244,6 +240,5 @@ docker compose run --rm php_cli bash
 ### Test
 
 ```bash
-# vendor/bin/phel test
+vendor/bin/phel test
 ```
-
