@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.0.5 (2024-05-25)
+
+### Bugfix
+
+ * fix `Cannot resolve symbol 'pdo/connect'` error. add `phel-config.php` #1
+
 ## v0.0.4 (2024-05-25)
 
 ### Features
