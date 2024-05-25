@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v0.0.4 (2024-05-25)
+
+### Features
+
+ * Packagist package name has changed from `smeghead/phel-pdo` to `phel-lang/phel-pdo`.
+ * update phel-lang v0.14.1
+
 ## v0.0.3 (2024-05-23)
 
 ### Features
