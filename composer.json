@@ -8,7 +8,7 @@
     ],
     "require": {
         "php": ">=8.2",
-        "phel-lang/phel-lang": "^0.14"
+        "phel-lang/phel-lang": ">=0.14"
     },
     "license": "MIT",
     "autoload": {
