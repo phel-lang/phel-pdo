@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v0.0.7 (2024-06-24)
+
+ * Support phel-lang 0.15
+
 ## v0.0.6 (2024-06-24)
 
  * Support phel-lang >= 0.14 (includes 0.15)
