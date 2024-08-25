@@ -4,13 +4,9 @@
 
 (defn- map-key-to-keyowrd [row]
   (let [row (php-array-to-map row)]
-    (loop [ps (keys row)
-           acc {}]
-      (if (empty? ps)
-        acc
-        (recur
-          (rest ps)
-          (put acc (keyword (first ps)) (row (first ps))))))))
+    (reduce (fn [acc key]
+              (put acc (keyword key) (row key)))
+            {} (keys row))))
 
 (defn fetch
   "Fetches the next row from a result set"
@@ -36,13 +32,9 @@
       (fetchAll (php/:: \PDO FETCH_ASSOC)))))
 
 (defn- map-key-to-string [params]
-  (loop [ps (keys params)
-         acc {}]
-    (if (empty? ps)
-      (to-php-array acc)
-      (recur
-        (rest ps)
-        (put acc (format "%s" (first ps)) (params (first ps)))))))
+  (to-php-array (reduce (fn [acc key]
+                          (put acc (format "%s" key) (params key)))
+                        {} (keys params))))
 
 (defn execute
   "Executes a prepared statement"
