@@ -2,7 +2,7 @@
 
 (defstruct statement [stmt])
 
-(defn- map-key-to-keyowrd [row]
+(defn- map-key-to-keyword [row]
   (let [row (php-array-to-map row)]
     (reduce (fn [acc key]
               (put acc (keyword key) (row key)))
@@ -11,7 +11,7 @@
 (defn fetch
   "Fetches the next row from a result set"
   [statement]
-  (map-key-to-keyowrd
+  (map-key-to-keyword
     (php/->
       (statement :stmt)
       (fetch (php/:: \PDO FETCH_ASSOC)))))
@@ -26,7 +26,7 @@
 (defn fetch-all
   "Fetches the remaining rows from a result set"
   [statement]
-  (map map-key-to-keyowrd
+  (map map-key-to-keyword
     (php/->
       (statement :stmt)
       (fetchAll (php/:: \PDO FETCH_ASSOC)))))
