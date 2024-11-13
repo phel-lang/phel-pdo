@@ -1,5 +1,10 @@
 # CHANGELOG
 
+
+### Bugfix
+
+ * rename keyowrd -> keyword #2 (@jasalt)
+
 ## v0.0.7 (2024-06-24)
 
  * Support phel-lang 0.15
