@@ -199,6 +199,9 @@ Returns an SQL prepared command
 
 Executes a prepared statement
 
+> [!NOTE]
+> The return value of the original library, `PDOStatement::execute()`, is a `bool` value representing the result of the `execute` method, while the return value of `statement/execute` returns the statement itself.
+
 ```clojure
 (execute statement)
 ```
