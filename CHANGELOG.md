@@ -1,10 +1,10 @@
 # CHANGELOG
 
-
 ### Bugfix
 
  * rename keyowrd -> keyword #2 (@jasalt)
  * doc: add note about return value of `statement/execute` #3
+ * fix require phel-lang version.
 
 ## v0.0.7 (2024-06-24)
 
