@@ -26,6 +26,7 @@
   (php/-> (conn :pdo) (exec stmt)))
 
 (declare statement)
+(declare execute)
 
 (defn prepare
   "Prepares a statement for execution and returns a statement object"
@@ -63,6 +64,26 @@
   "Returns the ID of the last inserted row or sequence value"
   [conn]
   (php/intval (php/-> (conn :pdo) (lastInsertId))))
+
+(defn- check-ident [s]
+  (if (= 1 (php/preg_match "/^[A-Za-z_][A-Za-z0-9_]*$/" s))
+    s
+    (throw (php/new \InvalidArgumentException (str "Invalid identifier: " s)))))
+
+(defn- join-csv [xs]
+  (php/implode ", " (phel->php (into [] xs))))
+
+(defn ^int insert
+  "Inserts a row built from a map into table and returns the new last-insert-id.
+  Table and column names must be plain identifiers; values are bound as parameters."
+  [conn table row]
+  (let [tbl  (check-ident (name table))
+        cols (into [] (for [k :in (keys row)] (check-ident (name k))))
+        sql  (str "INSERT INTO " tbl
+                  " (" (join-csv cols) ")"
+                  " VALUES (" (join-csv (for [c :in cols] (str ":" c))) ")")]
+    (-> (prepare conn sql) (execute row))
+    (last-insert-id conn)))
 
 (defn ^int error-code
   "Fetch the SQLSTATE associated with the last operation on the database handle"
