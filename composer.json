@@ -23,6 +23,11 @@
         {
             "name": "smeghead",
             "email": "smeghead7@gmail.com"
+        },
+        {
+            "name": "Jose M. Valera Reales",
+            "email": "phel@chemaclass.es",
+            "homepage": "https://chemaclass.com"
         }
     ],
     "scripts": {
