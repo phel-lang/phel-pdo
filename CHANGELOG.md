@@ -3,6 +3,8 @@
 ### Changes
 
  * remove optional `phel-config.php` (no special config needed)
+ * remove `Dockerfile` and `compose.yaml` (library install via composer; no Docker needed for dev)
+ * rewrite README: tighter intro, table-based API reference, threaded examples via `->`
  * use phel 0.37 features: `^bool` tag on `set-attribute`, `for :pairs` + `into` in `row->map`, `when-let` in `fetch`
  * `fetch` returns `nil` (instead of an empty map) when no rows remain
 
