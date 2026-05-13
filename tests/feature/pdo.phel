@@ -1,7 +1,6 @@
-(ns phel\tests\pdo-initail
-  (:require phel\test :refer [deftest is])
-  (:require phel\pdo)
-  (:require phel\pdo\statement))
+(ns phel.tests.pdo-initial
+  (:require phel.test :refer [deftest is])
+  (:require phel.pdo))
 
 (deftest test-initial
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -17,7 +16,7 @@
                conn
                "insert into t1 (name) values ('phel')")))
     (let [stmt (pdo/query conn "select * from t1 where id = 1")]
-      (is (= {:id 1 :name "phel"} (statement/fetch stmt))))))
+      (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))))
 
 (deftest test-simple-prepare-select
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -30,7 +29,7 @@
                "insert into t1 (name) values ('phel')")))
     (is (pdo/commit conn))
     (let [stmt (pdo/query conn "select count(*) from t1 where id = 1")]
-      (is (= 1 (statement/fetch-column stmt))))))
+      (is (= 1 (pdo/fetch-column stmt))))))
 
 (deftest test-simple-prepare-select-with-params
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -43,8 +42,8 @@
                "insert into t1 (name) values ('phel')")))
     (is (pdo/commit conn))
     (let [stmt (pdo/prepare conn "select count(*) from t1 where id = :id")
-          stmt (statement/execute stmt {:id 1})]
-      (is (= 1 (statement/fetch-column stmt))))))
+          stmt (pdo/execute stmt {:id 1})]
+      (is (= 1 (pdo/fetch-column stmt))))))
 
 (deftest test-simple-rollback
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -57,7 +56,7 @@
                "insert into t1 (name) values ('phel')")))
     (is (pdo/rollback conn))
     (let [stmt (pdo/query conn "select count(*) from t1 where id = 1")]
-      (is (= 0 (statement/fetch-column stmt))))))
+      (is (= 0 (pdo/fetch-column stmt))))))
 
 (deftest test-simple-commit
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -70,7 +69,7 @@
                "insert into t1 (name) values ('phel')")))
     (is (pdo/commit conn))
     (let [stmt (pdo/query conn "select count(*) from t1 where id = 1")]
-      (is (= 1 (statement/fetch-column stmt))))))
+      (is (= 1 (pdo/fetch-column stmt))))))
 
 (deftest test-quote
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -118,14 +117,8 @@
 
 (deftest test-attribute
   (let [conn (pdo/connect "sqlite::memory:")]
-    (pdo/set-attribute
-               conn
-               (php/:: \PDO ATTR_ERRMODE)
-               (php/:: \PDO ERRMODE_SILENT))
-    (is (= (php/:: \PDO ERRMODE_SILENT)
-           (pdo/get-attribute
-             conn
-             (php/:: \PDO ATTR_ERRMODE))))))
+    (pdo/set-attribute conn \PDO/ATTR_ERRMODE \PDO/ERRMODE_SILENT)
+    (is (= \PDO/ERRMODE_SILENT (pdo/get-attribute conn \PDO/ATTR_ERRMODE)))))
 
 (deftest test-in-transaction
   (let [conn (pdo/connect "sqlite::memory:")]

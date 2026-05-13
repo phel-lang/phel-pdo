@@ -4,6 +4,4 @@ declare(strict_types=1);
 
 use Phel\Config\PhelConfig;
 
-return (new PhelConfig())
-    ->setSrcDirs(['src'])
-    ->setTestDirs(['tests']);
+return PhelConfig::forProject();

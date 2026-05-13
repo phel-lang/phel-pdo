@@ -1,5 +1,4 @@
-(ns phel\pdo
-  (:require phel\pdo\statement))
+(ns phel.pdo)
 
 (defstruct connection [pdo])
 
@@ -15,53 +14,57 @@
 
 (defn connect
   "Connect database and return connection object.
-  Throws a PDOException if the attempt to connect to the requested database fails "
+  Throws a PDOException if the attempt to connect to the requested database fails."
   [dsn & [username password options]]
   (let [conn (connection (php/new \PDO dsn username password options))]
-    (set-attribute conn (php/:: \PDO ATTR_ERRMODE) (php/:: \PDO ERRMODE_EXCEPTION))
+    (set-attribute conn \PDO/ATTR_ERRMODE \PDO/ERRMODE_EXCEPTION)
     conn))
 
-(defn exec
+(defn ^int exec
   "Execute an SQL statement and return the number of affected rows"
   [conn stmt]
   (php/-> (conn :pdo) (exec stmt)))
 
+(declare statement)
+
 (defn prepare
   "Prepares a statement for execution and returns a statement object"
   [conn stmt & [options]]
-  (statement/statement (php/-> (conn :pdo) (prepare stmt (to-php-array (or options {}))))))
+  (statement
+    (php/-> (conn :pdo) (prepare stmt (phel->php (or options {}))))))
 
 (defn query
   "Prepares and executes an SQL statement without placeholders"
   [conn stmt & [fetch-mode]]
-  (statement/statement (php/-> (conn :pdo) (query stmt (or fetch-mode (php/:: \PDO FETCH_ASSOC))))))
+  (statement
+    (php/-> (conn :pdo) (query stmt (or fetch-mode \PDO/FETCH_ASSOC)))))
 
-(defn begin
+(defn ^bool begin
   "Initiates a transaction"
   [conn]
   (php/-> (conn :pdo) (beginTransaction)))
 
-(defn rollback
+(defn ^bool rollback
   "Rolls back a transaction"
   [conn]
   (php/-> (conn :pdo) (rollback)))
 
-(defn commit
+(defn ^bool commit
   "Commits a transaction"
   [conn]
   (php/-> (conn :pdo) (commit)))
 
-(defn quote
+(defn ^string quote
   "Quotes a string for use in a query"
   [conn string & [type]]
-  (php/-> (conn :pdo) (quote string (or type (php/:: \PDO PARAM_STR)))))
+  (php/-> (conn :pdo) (quote string (or type \PDO/PARAM_STR))))
 
-(defn last-insert-id
+(defn ^int last-insert-id
   "Returns the ID of the last inserted row or sequence value"
   [conn]
   (php/intval (php/-> (conn :pdo) (lastInsertId))))
 
-(defn error-code
+(defn ^int error-code
   "Fetch the SQLSTATE associated with the last operation on the database handle"
   [conn]
   (php/intval (php/-> (conn :pdo) (errorCode))))
@@ -69,10 +72,11 @@
 (defn error-info
   "Fetch extended error information associated with the last operation on the database handle"
   [conn]
-  (let [[error-code driver-error-code driver-message] (values (php-array-to-map (php/-> (conn :pdo) (errorInfo))))]
-    [(php/intval error-code) (php/intval driver-error-code) driver-message]))
+  (let [[sqlstate driver-code driver-message]
+        (values (php->phel (php/-> (conn :pdo) (errorInfo))))]
+    [(php/intval sqlstate) (php/intval driver-code) driver-message]))
 
-(defn in-transaction
+(defn ^bool in-transaction
   "Checks if inside a transaction"
   [conn]
   (php/-> (conn :pdo) (inTransaction)))
@@ -80,5 +84,6 @@
 (defn get-available-drivers
   "Return an array of available PDO drivers"
   [conn]
-  (values (php-array-to-map (php/-> (conn :pdo) (getAvailableDrivers)))))
+  (values (php->phel (php/-> (conn :pdo) (getAvailableDrivers)))))
 
+(load "pdo/statement")

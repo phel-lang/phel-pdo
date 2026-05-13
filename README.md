@@ -24,29 +24,52 @@ composer require phel-lang/phel-pdo
 This is an example of connecting to a file database, creating a table, inserting records, and searching on repl.
 
 ```clojure
-phel:1> (require phel\pdo)
-phel\pdo
-phel:2> (require phel\pdo\statement)
-phel\pdo\statement
-phel:3> (def connection-string "sqlite:database.db")
+phel:1> (require phel.pdo)
+phel.pdo
+phel:2> (def connection-string "sqlite:database.db")
 1
-phel:4> (def conn (pdo/connect connection-string))
+phel:3> (def conn (pdo/connect connection-string))
 1
-phel:5> (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchr(10))")
+phel:4> (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchr(10))")
 0
-phel:6> (pdo/exec conn "insert into t1 (name) values ('phel'), ('php')")
+phel:5> (pdo/exec conn "insert into t1 (name) values ('phel'), ('php')")
 2
-phel:7> (def stmt (pdo/query conn "select * from t1 where id = 1"))
+phel:6> (def stmt (pdo/query conn "select * from t1 where id = 1"))
 1
-phel:8> (statement/fetch stmt)
+phel:7> (pdo/fetch stmt)
 {:id 1 :name phel}
 phel:8> (def stmt (pdo/prepare conn "select * from t1 where id = :id"))
 1
-phel:9> (def stmt (statement/execute stmt {:id 1}))
+phel:9> (def stmt (pdo/execute stmt {:id 1}))
 1
-phel:10> (statement/fetch stmt)
+phel:10> (pdo/fetch stmt)
 {:id 1 :name phel}
 ```
+
+## Use with phel-sql
+
+[phel-sql](https://github.com/phel-lang/phel-sql) is a data-driven SQL DSL (HoneySQL-style). It returns `[sql params]` from plain data — pair it with phel-pdo to execute:
+
+```bash
+composer require phel-lang/phel-sql
+```
+
+```clojure
+(require phel.pdo)
+(require phel.sql :as sql)
+
+(let [[query params] (sql/format
+                       {:select [:id :name]
+                        :from   [:users]
+                        :where  [:= :id 1]})
+      conn           (pdo/connect "sqlite:database.db")
+      stmt           (pdo/prepare conn query)
+      stmt           (pdo/execute stmt params)]
+  (pdo/fetch stmt))
+;; => {:id 1 :name "phel"}
+```
+
+phel-sql is optional — phel-pdo works with raw SQL strings on its own.
 
 ## Reference
 
@@ -177,14 +200,14 @@ Set an attribute
 
 ### statement
 
-Represents a prepared statement and, after the statement is executed, an associated result set.
+All statement functions live in the same `phel.pdo` namespace. They operate on a statement value returned by `pdo/prepare` or `pdo/query`.
 
 #### bind-value
 
 Binds a value to a parameter
 
 ```clojure
-(bind-value statement column value & [type])
+(bind-value stmt column value & [type])
 ```
 
 #### debug-dump-params
@@ -192,7 +215,7 @@ Binds a value to a parameter
 Returns an SQL prepared command
 
 ```clojure
-(debug-dump-params statement)
+(debug-dump-params stmt)
 ```
 
 #### execute
@@ -200,10 +223,10 @@ Returns an SQL prepared command
 Executes a prepared statement
 
 > [!NOTE]
-> The return value of the original library, `PDOStatement::execute()`, is a `bool` value representing the result of the `execute` method, while the return value of `statement/execute` returns the statement itself.
+> `PDOStatement::execute()` returns `bool`, but `pdo/execute` returns the statement itself so it threads through `let` bindings.
 
 ```clojure
-(execute statement)
+(execute stmt & [params])
 ```
 
 #### fetch
@@ -211,7 +234,7 @@ Executes a prepared statement
 Fetches the next row from a result set
 
 ```clojure
-(fetch statement)
+(fetch stmt)
 ```
 
 #### fetch-all
@@ -219,7 +242,7 @@ Fetches the next row from a result set
 Fetches the remaining rows from a result set
 
 ```clojure
-(fetch-all statement)
+(fetch-all stmt)
 ```
 
 #### fetch-column
@@ -227,7 +250,7 @@ Fetches the remaining rows from a result set
 Returns a single column from the next row of a result set
 
 ```clojure
-(fetch-column statement & [column])
+(fetch-column stmt & [column])
 ```
 
 

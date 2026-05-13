@@ -1,7 +1,6 @@
-(ns phel\tests\statement
-  (:require phel\test :refer [deftest is])
-  (:require phel\pdo)
-  (:require phel\pdo\statement))
+(ns phel.tests.statement
+  (:require phel.test :refer [deftest is])
+  (:require phel.pdo))
 
 (deftest test-fetch-all
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -15,7 +14,7 @@
                conn
                "insert into t1 (name) values ('php')")))
     (let [stmt (pdo/query conn "select * from t1")]
-      (is (= [{:id 1 :name "phel"} {:id 2 :name "php"}] (statement/fetch-all stmt))))))
+      (is (= [{:id 1 :name "phel"} {:id 2 :name "php"}] (pdo/fetch-all stmt))))))
 
 (deftest test-column-count
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -26,7 +25,7 @@
                conn
                "insert into t1 (name) values ('phel')")))
     (let [stmt (pdo/query conn "select * from t1")]
-      (is (= 2 (statement/column-count stmt))))))
+      (is (= 2 (pdo/column-count stmt))))))
 
 (deftest test-row-count
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -34,7 +33,7 @@
                conn
                "create table t1 (id integer primary key autoincrement, name varchr(10))")))
     (let [stmt (pdo/query conn "insert into t1 (name) values ('phel'), ('php')")]
-      (is (= 2 (statement/row-count stmt))))))
+      (is (= 2 (pdo/row-count stmt))))))
 
 (deftest test-bind-value
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -45,9 +44,9 @@
                conn
                "insert into t1 (name) values ('phel')")))
     (let [stmt (pdo/prepare conn "select * from t1 where id = :id")
-          stmt (statement/bind-value stmt :id 1)
-          stmt (statement/execute stmt)]
-      (is (= {:id 1 :name "phel"} (statement/fetch stmt))))))
+          stmt (pdo/bind-value stmt :id 1)
+          stmt (pdo/execute stmt)]
+      (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))))
 
 (deftest test-bind-value-with-type
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -58,13 +57,13 @@
                conn
                "insert into t1 (name) values ('phel')")))
     (let [stmt (pdo/prepare conn "select * from t1 where id = :id")
-          stmt (statement/bind-value stmt :id 1 (php/:: \PDO PARAM_INT))
-          stmt (statement/execute stmt)]
-      (is (= {:id 1 :name "phel"} (statement/fetch stmt))))
+          stmt (pdo/bind-value stmt :id 1 \PDO/PARAM_INT)
+          stmt (pdo/execute stmt)]
+      (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))
     (let [stmt (pdo/prepare conn "select * from t1 where name = :name")
-          stmt (statement/bind-value stmt :name "phel" (php/:: \PDO PARAM_STR))
-          stmt (statement/execute stmt)]
-      (is (= {:id 1 :name "phel"} (statement/fetch stmt))))))
+          stmt (pdo/bind-value stmt :name "phel" \PDO/PARAM_STR)
+          stmt (pdo/execute stmt)]
+      (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))))
 
 (deftest test-debug-dump-params
   (let [conn (pdo/connect "sqlite::memory:")]
@@ -75,8 +74,7 @@
                conn
                "insert into t1 (name) values ('phel')")))
     (let [stmt (pdo/prepare conn "select * from t1 where name = :name")
-          stmt (statement/bind-value stmt :name "phel" (php/:: \PDO PARAM_STR))
-          info (statement/debug-dump-params stmt)
-          lines (values (php-array-to-map (php/preg_split "/\r\n|\r|\n/" info)))]
+          stmt (pdo/bind-value stmt :name "phel" \PDO/PARAM_STR)
+          info (pdo/debug-dump-params stmt)
+          lines (values (php->phel (php/preg_split "/\r\n|\r|\n/" info)))]
       (is (= "SQL: [35] select * from t1 where name = :name" (lines 0))))))
-

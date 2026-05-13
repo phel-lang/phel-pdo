@@ -1,0 +1,70 @@
+(in-ns phel.pdo)
+
+(defstruct statement [stmt])
+
+(defn- row->map [row]
+  (let [m (php->phel row)]
+    (reduce (fn [acc k] (put acc (keyword k) (m k)))
+            {} (keys m))))
+
+(defn fetch
+  "Fetches the next row from a result set"
+  [stmt]
+  (row->map (php/-> (stmt :stmt) (fetch \PDO/FETCH_ASSOC))))
+
+(defn fetch-column
+  "Returns a single column from the next row of a result set"
+  [stmt & [column]]
+  (php/-> (stmt :stmt) (fetchColumn (or column 0))))
+
+(defn fetch-all
+  "Fetches the remaining rows from a result set"
+  [stmt]
+  (map row->map (php/-> (stmt :stmt) (fetchAll \PDO/FETCH_ASSOC))))
+
+(defn execute
+  "Executes a prepared statement"
+  [stmt & [params]]
+  (if (empty? params)
+    (php/-> (stmt :stmt) (execute))
+    (php/-> (stmt :stmt) (execute (phel->php params))))
+  stmt)
+
+(defn ^int column-count
+  "Returns the number of columns in the result set"
+  [stmt]
+  (php/-> (stmt :stmt) (columnCount)))
+
+(defn ^int row-count
+  "Returns the number of rows affected by the last SQL statement"
+  [stmt]
+  (php/-> (stmt :stmt) (rowCount)))
+
+(defn bind-value
+  "Binds a value to a parameter"
+  [stmt column value & [type]]
+  (php/-> (stmt :stmt)
+          (bindValue (str column) value (or type \PDO/PARAM_STR)))
+  stmt)
+
+(defn ^string debug-dump-params
+  "Returns an SQL prepared command"
+  [stmt]
+  (php/ob_start)
+  (php/-> (stmt :stmt) (debugDumpParams))
+  (php/ob_get_clean))
+
+;; Not implemented yet:
+;;
+;; PDOStatement::bindColumn      — Bind a column to a PHP variable
+;; PDOStatement::bindParam       — Binds a parameter to the specified variable name
+;; PDOStatement::closeCursor     — Closes the cursor, enabling the statement to be executed again
+;; PDOStatement::errorCode       — Fetch the SQLSTATE associated with the last operation on the statement handle
+;; PDOStatement::errorInfo       — Fetch extended error information associated with the last operation on the statement handle
+;; PDOStatement::fetchObject     — Fetches the next row and returns it as an object
+;; PDOStatement::getAttribute    — Retrieve a statement attribute
+;; PDOStatement::getColumnMeta   — Returns metadata for a column in a result set
+;; PDOStatement::getIterator     — Gets result set iterator
+;; PDOStatement::nextRowset      — Advances to the next rowset in a multi-rowset statement handle
+;; PDOStatement::setAttribute    — Set a statement attribute
+;; PDOStatement::setFetchMode    — Set the default fetch mode for this statement
