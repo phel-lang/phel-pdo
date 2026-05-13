@@ -1,6 +1,6 @@
 ---
 name: debugger
-description: Diagnoses phel-pdo failures — Phel resolution, PHP/PDO interop, SQLite driver behaviour.
+description: Diagnoses phel-pdo failures - Phel resolution, PHP/PDO interop, SQLite driver behaviour.
 model: sonnet
 maxTurns: 15
 allowed_tools:
@@ -33,6 +33,6 @@ allowed_tools:
 2. Isolate the layer; skip ones already proven fine.
 3. Inspect the wrapper (arg order, conversions, return).
 4. Probe with a one-liner via `/phel-repl`.
-5. Cross-check raw PHP — if it misbehaves there too, the bug isn't in the wrapper.
+5. Cross-check raw PHP - if it misbehaves there too, the bug isn't in the wrapper.
 
 Report: layer · function · root cause · fix (file + change).

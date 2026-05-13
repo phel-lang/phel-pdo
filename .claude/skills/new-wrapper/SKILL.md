@@ -75,5 +75,5 @@ Add an `### Added` entry under `## [Unreleased]` in `CHANGELOG.md`.
 ## Constraints
 
 - Never expose raw `\PDO` / `\PDOStatement` from the public function.
-- Never hand-concatenate values into SQL — that's PDO's job, params go through `phel->php`.
+- Never hand-concatenate values into SQL - that's PDO's job, params go through `phel->php`.
 - Mutators must end in the wrapped struct so callers can thread.

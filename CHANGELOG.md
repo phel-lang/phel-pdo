@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `pdo/insert` — build an `INSERT` from a map (`(pdo/insert conn :table {:col v ...})`), execute it as a prepared statement, and return the new `last-insert-id`. Identifiers must match `[A-Za-z_][A-Za-z0-9_]*` ([#4]).
+- `pdo/insert` - build an `INSERT` from a map (`(pdo/insert conn :table {:col v ...})`), execute it as a prepared statement, and return the new `last-insert-id`. Identifiers must match `[A-Za-z_][A-Za-z0-9_]*` ([#4]).
 
 ## [0.1.0] - 2026-05-13
 

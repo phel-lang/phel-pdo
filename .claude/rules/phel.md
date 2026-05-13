@@ -14,7 +14,7 @@ globs: src/**,tests/**
 
 ## Docstrings
 
-Public functions get a terse `:doc` one-liner as the first form after the param vector — match the existing style in `src/pdo.phel` / `src/pdo/statement.phel` ("Initiates a transaction", "Fetches the next row from a result set, or nil if no more rows").
+Public functions get a terse `:doc` one-liner as the first form after the param vector - match the existing style in `src/pdo.phel` / `src/pdo/statement.phel` ("Initiates a transaction", "Fetches the next row from a result set, or nil if no more rows").
 
 Return-type tags (`^bool`, `^int`, `^string`) reflect the underlying PDO return type, not the wrapper's container.
 

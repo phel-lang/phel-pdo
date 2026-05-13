@@ -15,11 +15,11 @@ allowed-tools: "Read, Edit, Bash(composer *), Bash(./vendor/bin/phel *), Bash(ve
 
 ## Instructions
 
-1. **Format** — auto-format staged `.phel` files (no-op on non-Phel changes):
+1. **Format** - auto-format staged `.phel` files (no-op on non-Phel changes):
    ```bash
    git diff --cached --name-only --diff-filter=ACMR | grep '\.phel$' | xargs -r vendor/bin/phel format
    ```
-   Note: a PostToolUse hook already runs `vendor/bin/phel format` on every Edit/Write — this step covers files staged from other tools.
+   Note: a PostToolUse hook already runs `vendor/bin/phel format` on every Edit/Write - this step covers files staged from other tools.
 
 2. **Test**:
    ```bash
@@ -37,6 +37,6 @@ allowed-tools: "Read, Edit, Bash(composer *), Bash(./vendor/bin/phel *), Bash(ve
 
 5. **Commit**: `git commit -m "<message>"`.
 
-6. **Changelog check** — if `feat:` / `fix:`, warn when `## [Unreleased]` in `CHANGELOG.md` wasn't updated.
+6. **Changelog check** - if `feat:` / `fix:`, warn when `## [Unreleased]` in `CHANGELOG.md` wasn't updated.
 
 7. Report hash + files.

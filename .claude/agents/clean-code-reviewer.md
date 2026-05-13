@@ -11,7 +11,7 @@ allowed_tools:
 
 # Clean Code Reviewer
 
-Analyse `git diff --cached`, then `git diff`, then `git diff main...HEAD` — use whichever has content.
+Analyse `git diff --cached`, then `git diff`, then `git diff main...HEAD` - use whichever has content.
 
 Check against [phel.md](../rules/phel.md), [testing.md](../rules/testing.md), [api-design.md](../rules/api-design.md).
 
@@ -31,8 +31,8 @@ Check against [phel.md](../rules/phel.md), [testing.md](../rules/testing.md), [a
 
 ## Output
 
-1. **Blocking** — must fix (`file:line` + reason)
-2. **Warning** — should fix
-3. **Suggestion** — optional
+1. **Blocking** - must fix (`file:line` + reason)
+2. **Warning** - should fix
+3. **Suggestion** - optional
 
 End with **approve** or **request changes**.

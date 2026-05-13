@@ -39,7 +39,7 @@ Requires PHP `>=8.4` and `phel-lang/phel-lang ^0.37`.
 
 ## With phel-sql
 
-[phel-sql](https://github.com/phel-lang/phel-sql) is a data-driven SQL DSL (HoneySQL-style). It returns `[sql params]` from plain data — feed that straight into `pdo/prepare` + `pdo/execute`:
+[phel-sql](https://github.com/phel-lang/phel-sql) is a data-driven SQL DSL (HoneySQL-style). It returns `[sql params]` from plain data - feed that straight into `pdo/prepare` + `pdo/execute`:
 
 ```bash
 composer require phel-lang/phel-sql
@@ -59,7 +59,7 @@ composer require phel-lang/phel-sql
 ;; => {:id 1 :name "phel"}
 ```
 
-phel-sql is optional — phel-pdo works with raw SQL strings on its own.
+phel-sql is optional - phel-pdo works with raw SQL strings on its own.
 
 ## API
 
@@ -112,8 +112,8 @@ vendor/bin/phel test
 
 Deeper docs live in [`docs/`](docs/README.md):
 
-- [Getting started](docs/getting-started.md) — install, first query, run tests.
-- [Architecture](docs/architecture.md) — `connection` / `statement` design and conventions.
-- [Recipes](docs/recipes.md) — transactions, prepared statements, bind types, phel-sql.
-- [Troubleshooting](docs/troubleshooting.md) — common errors and fixes.
-- [Contributing](docs/contributing.md) — adding wrappers, commits, PRs, releases.
+- [Getting started](docs/getting-started.md) - install, first query, run tests.
+- [Architecture](docs/architecture.md) - `connection` / `statement` design and conventions.
+- [Recipes](docs/recipes.md) - transactions, prepared statements, bind types, phel-sql.
+- [Troubleshooting](docs/troubleshooting.md) - common errors and fixes.
+- [Contributing](docs/contributing.md) - adding wrappers, commits, PRs, releases.

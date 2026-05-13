@@ -16,7 +16,7 @@ allowed-tools: "Read, Bash(git *), Bash(gh *), Bash(./release.sh *)"
 
 1. Abort if not on `main` or working tree is dirty.
 2. Confirm `## [Unreleased]` has content: `git diff $(git describe --tags --abbrev=0)..HEAD -- CHANGELOG.md`. Warn if empty.
-3. Validate `$ARGUMENTS` is `X.Y.Z` (no `v` — the script adds it). Ask if missing.
+3. Validate `$ARGUMENTS` is `X.Y.Z` (no `v` - the script adds it). Ask if missing.
 4. Run:
    ```bash
    ./release.sh <version>          # or with --dry-run first

@@ -81,7 +81,7 @@ Check state with `(pdo/in-transaction conn)`.
 ;; => 1
 ```
 
-Returns an `int`. On PostgreSQL pass the sequence name to raw PDO (not yet wrapped — drop into `(php/-> (conn :pdo) (lastInsertId "seq"))` for now).
+Returns an `int`. On PostgreSQL pass the sequence name to raw PDO (not yet wrapped - drop into `(php/-> (conn :pdo) (lastInsertId "seq"))` for now).
 
 ## Quoting
 
@@ -127,11 +127,11 @@ Read or change PDO attributes per connection:
 ;; => ["mysql" "sqlite" ...]
 ```
 
-Returns a Phel vector — `contains-value?` works directly.
+Returns a Phel vector - `contains-value?` works directly.
 
 ## Using phel-sql
 
-[phel-sql](https://github.com/phel-lang/phel-sql) is a data-driven SQL DSL. It returns `[sql params]` from plain data — feed that straight in:
+[phel-sql](https://github.com/phel-lang/phel-sql) is a data-driven SQL DSL. It returns `[sql params]` from plain data - feed that straight in:
 
 ```clojure
 (require phel.pdo)
@@ -157,4 +157,4 @@ phel-pdo + phel-sql is the recommended combo when you'd otherwise build SQL stri
 ;; => "SQL: [35] select * from t1 where name = :name ..."
 ```
 
-`debug-dump-params` captures `PDOStatement::debugDumpParams()` into a string — handy in REPL sessions.
+`debug-dump-params` captures `PDOStatement::debugDumpParams()` into a string - handy in REPL sessions.

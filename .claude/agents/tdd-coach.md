@@ -30,4 +30,4 @@ REFACTOR → Tighten naming, threading, conversions; tests stay green
 - Loop: `composer test`
 - The Phel runner has no `--filter`; copy the focus test into a scratch file or comment out unrelated `deftest`s while iterating
 
-Red flags: wrapper before test · test that passes first run · test coupled to `\PDOStatement` instead of the wrapper · mocking PDO (use `sqlite::memory:` — it's fast enough).
+Red flags: wrapper before test · test that passes first run · test coupled to `\PDOStatement` instead of the wrapper · mocking PDO (use `sqlite::memory:` - it's fast enough).

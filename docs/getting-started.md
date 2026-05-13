@@ -61,10 +61,10 @@ composer install
 composer test            # = vendor/bin/phel test
 ```
 
-Tests run against `sqlite::memory:` — no setup, no fixtures to load.
+Tests run against `sqlite::memory:` - no setup, no fixtures to load.
 
 ## Where to go next
 
-- **[Recipes](recipes.md)** — prepared statements, transactions, bind types, phel-sql.
-- **[Architecture](architecture.md)** — why the wrapper looks the way it does.
-- **[Troubleshooting](troubleshooting.md)** — when something blows up.
+- **[Recipes](recipes.md)** - prepared statements, transactions, bind types, phel-sql.
+- **[Architecture](architecture.md)** - why the wrapper looks the way it does.
+- **[Troubleshooting](troubleshooting.md)** - when something blows up.

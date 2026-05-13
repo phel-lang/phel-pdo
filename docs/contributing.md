@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for picking up phel-pdo. This page is the contributor cheat sheet — for the *why* behind the design choices, see [architecture](architecture.md).
+Thanks for picking up phel-pdo. This page is the contributor cheat sheet - for the *why* behind the design choices, see [architecture](architecture.md).
 
 ## Local setup
 
@@ -11,7 +11,7 @@ composer install
 composer test
 ```
 
-Requires PHP `>=8.4`. The test suite uses `sqlite::memory:` — no external DB needed.
+Requires PHP `>=8.4`. The test suite uses `sqlite::memory:` - no external DB needed.
 
 ## Editing Phel
 
@@ -83,7 +83,7 @@ Maintainers only:
 
 ## Not goals
 
-Please don't open PRs for any of these — they were explicitly removed or never added:
+Please don't open PRs for any of these - they were explicitly removed or never added:
 
 - PHPUnit, rector, cs-fixer, phpstan. This project is Phel-only by design.
 - A `phel-config.php` (not needed since Phel 0.37; library autoload is via `composer.json`).
@@ -94,8 +94,8 @@ Please don't open PRs for any of these — they were explicitly removed or never
 
 The `.claude/rules/` directory has the canonical, agent-readable versions of these conventions:
 
-- `.claude/rules/api-design.md` — public surface rules.
-- `.claude/rules/testing.md` — fixture and test conventions.
-- `.claude/rules/phel.md` — Phel idioms and naming.
+- `.claude/rules/api-design.md` - public surface rules.
+- `.claude/rules/testing.md` - fixture and test conventions.
+- `.claude/rules/phel.md` - Phel idioms and naming.
 
 If you change a convention here, update the matching rules file too.

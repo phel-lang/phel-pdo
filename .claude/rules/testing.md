@@ -13,4 +13,4 @@ globs: tests/**
 - Section comments (`;; ----`) group related tests
 - PDO errors: wrap the failing call in `(try ... (catch \PDOException _e nil))`, then assert via `pdo/error-code` / `pdo/error-info`
 - Run: `composer test` (the Phel test runner has no `--filter`; narrow by editing tests or using a scratch file)
-- Do not introduce phpunit, rector, cs-fixer, or phpstan — this project is Phel-only by design
+- Do not introduce phpunit, rector, cs-fixer, or phpstan - this project is Phel-only by design

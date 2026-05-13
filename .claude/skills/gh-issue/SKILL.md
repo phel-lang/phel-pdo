@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 !`gh issue view ${ARGUMENTS#\#} --json number,url,title,body,labels,assignees,state,comments 2>/dev/null || echo "Provide an issue number"`
 
-Read the body **and every comment** — later comments often refine or override the original.
+Read the body **and every comment** - later comments often refine or override the original.
 
 ## Steps
 
@@ -18,7 +18,7 @@ Read the body **and every comment** — later comments often refine or override 
 2. Branch from a fresh `main`. Prefix by label: `bug` → `fix/`, `enhancement` → `feat/`, `documentation` → `docs/`, else `feat/`. Format: `<prefix><num>-<slug>`.
 3. **Plan** the change: which file (`src/pdo.phel` connection-side, `src/pdo/statement.phel` statement-side), what `deftest` covers it, whether README API table + CHANGELOG need updating. Present the plan.
 4. **TDD** via the `tdd-coach` agent (red → green → refactor).
-5. `composer test` — fix everything before continuing.
+5. `composer test` - fix everything before continuing.
 6. Update `## [Unreleased]` in `CHANGELOG.md`.
 7. Commit:
    ```

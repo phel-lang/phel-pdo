@@ -41,7 +41,7 @@ The wrapper follows a few rules so the public surface stays predictable:
 | Reads return Phel-native data. | Maps with keyword keys, vectors of maps, ints, strings. |
 | Rows go through `row->map`. | Keys become keywords automatically. |
 | Param maps go through `phel->php`. | Keyword keys → string keys for PDO. |
-| `ERRMODE_EXCEPTION` is set in `connect`. | Errors surface as `\PDOException` — don't re-wrap. |
+| `ERRMODE_EXCEPTION` is set in `connect`. | Errors surface as `\PDOException` - don't re-wrap. |
 | Public functions never expose raw `\PDO` / `\PDOStatement`. | Wrapper stays the only seam. |
 
 ## Boundary crossings
@@ -63,13 +63,13 @@ Every fetch routes through it, so result-set keys are always keywords.
 
 ## Why these choices
 
-- **Single namespace** — keeps the import story to one line: `(require phel.pdo)`.
-- **Structs, not opaque handles** — `(conn :pdo)` is escape-valve interop for the 1% case the wrapper doesn't cover.
-- **Thread-friendly returns** — `execute` returns `stmt` (not `bool` like raw PDO) on purpose: pipelines compose.
-- **Exception mode by default** — silent-error mode in raw PDO has bitten enough Phel callers that we just turn it on.
+- **Single namespace** - keeps the import story to one line: `(require phel.pdo)`.
+- **Structs, not opaque handles** - `(conn :pdo)` is escape-valve interop for the 1% case the wrapper doesn't cover.
+- **Thread-friendly returns** - `execute` returns `stmt` (not `bool` like raw PDO) on purpose: pipelines compose.
+- **Exception mode by default** - silent-error mode in raw PDO has bitten enough Phel callers that we just turn it on.
 
 ## Not goals
 
-- A query builder. Use [phel-sql](https://github.com/phel-lang/phel-sql) for that — it returns `[sql params]` you feed straight into `prepare` + `execute`. See [recipes](recipes.md#using-phel-sql).
+- A query builder. Use [phel-sql](https://github.com/phel-lang/phel-sql) for that - it returns `[sql params]` you feed straight into `prepare` + `execute`. See [recipes](recipes.md#using-phel-sql).
 - A connection pool / ORM / migration tool.
 - Wrapping every last PDO method. See the "Not implemented yet" block at the bottom of `src/pdo/statement.phel`; PRs welcome.

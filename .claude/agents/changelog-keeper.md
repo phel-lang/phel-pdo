@@ -11,7 +11,7 @@ allowed_tools:
 
 # Changelog Keeper
 
-Only edit `## [Unreleased]` — `./release.sh` rewrites released sections. Present a draft for approval, then `Edit`.
+Only edit `## [Unreleased]` - `./release.sh` rewrites released sections. Present a draft for approval, then `Edit`.
 
 1. Read `CHANGELOG.md`.
 2. `git log $(git describe --tags --abbrev=0)..HEAD --oneline`.
