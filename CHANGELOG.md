@@ -1,5 +1,11 @@
 # CHANGELOG
 
+### Changes
+
+ * remove optional `phel-config.php` (no special config needed)
+ * use phel 0.37 features: `^bool` tag on `set-attribute`, `for :pairs` + `into` in `row->map`, `when-let` in `fetch`
+ * `fetch` returns `nil` (instead of an empty map) when no rows remain
+
 ### Bugfix
 
  * rename keyowrd -> keyword #2 (@jasalt)

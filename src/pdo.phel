@@ -2,7 +2,7 @@
 
 (defstruct connection [pdo])
 
-(defn set-attribute
+(defn ^bool set-attribute
   "Set an attribute"
   [conn attribute value]
   (php/-> (conn :pdo) (setAttribute attribute value)))

@@ -99,6 +99,11 @@
   (let [stmt (pdo/query *conn* "select * from t1 where id = 1")]
     (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
 
+(deftest fetch-returns-nil-when-no-rows
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select * from t1 where id = 999")]
+    (is (nil? (pdo/fetch stmt)))))
+
 (deftest fetch-all-returns-all-rows
   (create-t1 *conn*)
   (insert-name *conn* "phel")

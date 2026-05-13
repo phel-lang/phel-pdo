@@ -3,14 +3,13 @@
 (defstruct statement [stmt])
 
 (defn- row->map [row]
-  (let [m (php->phel row)]
-    (reduce (fn [acc k] (put acc (keyword k) (m k)))
-            {} (keys m))))
+  (into {} (for [[k v] :pairs (php->phel row)] [(keyword k) v])))
 
 (defn fetch
-  "Fetches the next row from a result set"
+  "Fetches the next row from a result set, or nil if no more rows"
   [stmt]
-  (row->map (php/-> (stmt :stmt) (fetch \PDO/FETCH_ASSOC))))
+  (when-let [row (php/-> (stmt :stmt) (fetch \PDO/FETCH_ASSOC))]
+    (row->map row)))
 
 (defn fetch-column
   "Returns a single column from the next row of a result set"
