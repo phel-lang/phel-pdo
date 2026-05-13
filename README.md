@@ -102,3 +102,13 @@ Returned by `pdo/query` and `pdo/prepare`.
 composer install
 vendor/bin/phel test
 ```
+
+## Docs
+
+Deeper docs live in [`docs/`](docs/README.md):
+
+- [Getting started](docs/getting-started.md) — install, first query, run tests.
+- [Architecture](docs/architecture.md) — `connection` / `statement` design and conventions.
+- [Recipes](docs/recipes.md) — transactions, prepared statements, bind types, phel-sql.
+- [Troubleshooting](docs/troubleshooting.md) — common errors and fixes.
+- [Contributing](docs/contributing.md) — adding wrappers, commits, PRs, releases.

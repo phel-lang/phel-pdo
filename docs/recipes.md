@@ -1,0 +1,160 @@
+# Recipes
+
+Common patterns. Every snippet assumes:
+
+```clojure
+(require phel.pdo)
+(def conn (pdo/connect "sqlite::memory:"))
+```
+
+## Prepared statements
+
+Reuse a statement across many parameter sets:
+
+```clojure
+(let [stmt (pdo/prepare conn "insert into t1 (name) values (:name)")]
+  (pdo/execute stmt {:name "phel"})
+  (pdo/execute stmt {:name "php"})
+  (pdo/execute stmt {:name "clojure"}))
+```
+
+`execute` returns the statement, so it threads:
+
+```clojure
+(-> (pdo/prepare conn "select * from t1 where id = :id")
+    (pdo/execute {:id 1})
+    (pdo/fetch))
+;; => {:id 1 :name "phel"}
+```
+
+> [!NOTE]
+> `pdo/execute` returns the statement (not `bool` like raw `PDOStatement::execute()`) so it composes with `->`.
+
+## Fetching
+
+| You want | Use |
+|---|---|
+| One row, then `nil` | `pdo/fetch` |
+| All rows as a vector of maps | `pdo/fetch-all` |
+| Just one column from the next row | `pdo/fetch-column` |
+| Number of rows affected by last DML | `pdo/row-count` |
+| Number of columns in the result set | `pdo/column-count` |
+
+```clojure
+(-> (pdo/query conn "select count(*) from t1")
+    (pdo/fetch-column))
+;; => 3
+```
+
+## Binding values explicitly
+
+`bind-value` is for when you want to control the PDO param type (e.g. `PARAM_INT` vs the default `PARAM_STR`):
+
+```clojure
+(-> (pdo/prepare conn "select * from t1 where id = :id")
+    (pdo/bind-value :id 1 \PDO/PARAM_INT)
+    (pdo/execute)
+    (pdo/fetch))
+```
+
+Available types: `\PDO/PARAM_STR` (default), `\PDO/PARAM_INT`, `\PDO/PARAM_BOOL`, `\PDO/PARAM_NULL`, `\PDO/PARAM_LOB`.
+
+## Transactions
+
+```clojure
+(pdo/begin conn)
+(try
+  (pdo/exec conn "insert into t1 (name) values ('phel')")
+  (pdo/exec conn "insert into t1 (name) values ('php')")
+  (pdo/commit conn)
+  (catch \PDOException _e
+    (pdo/rollback conn)))
+```
+
+Check state with `(pdo/in-transaction conn)`.
+
+## Last insert ID
+
+```clojure
+(pdo/exec conn "insert into t1 (name) values ('phel')")
+(pdo/last-insert-id conn)
+;; => 1
+```
+
+Returns an `int`. On PostgreSQL pass the sequence name to raw PDO (not yet wrapped — drop into `(php/-> (conn :pdo) (lastInsertId "seq"))` for now).
+
+## Quoting
+
+Prefer prepared statements. For the rare case where you need to inline a value (e.g., dynamic identifiers that PDO won't bind):
+
+```clojure
+(pdo/quote conn "I'm fine.")
+;; => "'I''m fine.'"
+```
+
+Pass a type as the third arg if you need something other than `PARAM_STR`.
+
+## Errors
+
+`connect` sets `ERRMODE_EXCEPTION`, so failures throw `\PDOException`. Catch and inspect via `error-code` / `error-info`:
+
+```clojure
+(try
+  (pdo/exec conn "insert into t1 (id, name) values (1, 'dup')")
+  (catch \PDOException _e nil))
+
+(pdo/error-code conn)   ; => 23000
+(pdo/error-info conn)   ; => [23000 19 "UNIQUE constraint failed: t1.id"]
+```
+
+`error-info` returns `[sqlstate driver-code driver-message]` with the first two coerced to int.
+
+## Attributes
+
+Read or change PDO attributes per connection:
+
+```clojure
+(pdo/get-attribute conn \PDO/ATTR_ERRMODE)
+;; => \PDO/ERRMODE_EXCEPTION
+
+(pdo/set-attribute conn \PDO/ATTR_DEFAULT_FETCH_MODE \PDO/FETCH_ASSOC)
+```
+
+## Available drivers
+
+```clojure
+(pdo/get-available-drivers conn)
+;; => ["mysql" "sqlite" ...]
+```
+
+Returns a Phel vector — `contains-value?` works directly.
+
+## Using phel-sql
+
+[phel-sql](https://github.com/phel-lang/phel-sql) is a data-driven SQL DSL. It returns `[sql params]` from plain data — feed that straight in:
+
+```clojure
+(require phel.pdo)
+(require phel.sql :as sql)
+
+(let [[query params] (sql/format {:select [:id :name]
+                                  :from   [:users]
+                                  :where  [:= :id 1]})]
+  (-> (pdo/prepare conn query)
+      (pdo/execute params)
+      (pdo/fetch)))
+;; => {:id 1 :name "phel"}
+```
+
+phel-pdo + phel-sql is the recommended combo when you'd otherwise build SQL strings by hand.
+
+## Debugging a prepared statement
+
+```clojure
+(-> (pdo/prepare conn "select * from t1 where name = :name")
+    (pdo/bind-value :name "phel")
+    (pdo/debug-dump-params))
+;; => "SQL: [35] select * from t1 where name = :name ..."
+```
+
+`debug-dump-params` captures `PDOStatement::debugDumpParams()` into a string — handy in REPL sessions.
