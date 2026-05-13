@@ -1,0 +1,171 @@
+(ns phel.pdo-test
+  (:require phel.test :refer [deftest is testing use-fixtures])
+  (:require phel.pdo))
+
+;; -------------
+;; Test fixtures
+;; -------------
+
+(def ^:dynamic *conn* nil)
+
+(defn- fresh-conn []
+  (pdo/connect "sqlite::memory:"))
+
+(defn- create-t1 [conn]
+  (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))"))
+
+(defn- insert-name [conn name]
+  (pdo/exec conn (format "insert into t1 (name) values ('%s')" name)))
+
+(defn- seed-t1
+  "Create t1 with one row named 'phel'."
+  [conn]
+  (create-t1 conn)
+  (insert-name conn "phel")
+  conn)
+
+(defn db-fixture [t]
+  (binding [*conn* (fresh-conn)]
+    (t)))
+
+(use-fixtures :each db-fixture)
+
+;; ----------
+;; Connection
+;; ----------
+
+(deftest connect-returns-struct
+  (is (struct? *conn*)))
+
+(deftest attribute-roundtrip
+  (pdo/set-attribute *conn* \PDO/ATTR_ERRMODE \PDO/ERRMODE_SILENT)
+  (is (= \PDO/ERRMODE_SILENT (pdo/get-attribute *conn* \PDO/ATTR_ERRMODE))))
+
+(deftest available-drivers-includes-sqlite
+  (is (contains-value? (pdo/get-available-drivers *conn*) "sqlite")))
+
+(deftest quote-escapes-single-quotes
+  (is (= "'I''m fine.'" (pdo/quote *conn* "I'm fine."))))
+
+;; ----
+;; Exec
+;; ----
+
+(deftest exec-create-returns-zero
+  (is (= 0 (create-t1 *conn*))))
+
+(deftest exec-insert-returns-affected-rows
+  (create-t1 *conn*)
+  (is (= 1 (insert-name *conn* "phel"))))
+
+(deftest last-insert-id-reflects-last-row
+  (seed-t1 *conn*)
+  (is (= 1 (pdo/last-insert-id *conn*))))
+
+;; ------------
+;; Transactions
+;; ------------
+
+(deftest in-transaction-tracks-state
+  (testing "false outside transaction"
+    (is (= false (pdo/in-transaction *conn*))))
+  (testing "true after begin"
+    (pdo/begin *conn*)
+    (is (= true (pdo/in-transaction *conn*))))
+  (testing "false after commit"
+    (pdo/commit *conn*)
+    (is (= false (pdo/in-transaction *conn*)))))
+
+(deftest commit-persists-changes
+  (create-t1 *conn*)
+  (pdo/begin *conn*)
+  (insert-name *conn* "phel")
+  (pdo/commit *conn*)
+  (is (= 1 (pdo/fetch-column (pdo/query *conn* "select count(*) from t1")))))
+
+(deftest rollback-reverts-changes
+  (create-t1 *conn*)
+  (pdo/begin *conn*)
+  (insert-name *conn* "phel")
+  (pdo/rollback *conn*)
+  (is (= 0 (pdo/fetch-column (pdo/query *conn* "select count(*) from t1")))))
+
+;; -----
+;; Query
+;; -----
+
+(deftest query-fetch-returns-row-as-map
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select * from t1 where id = 1")]
+    (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
+
+(deftest fetch-all-returns-all-rows
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (let [stmt (pdo/query *conn* "select * from t1")]
+    (is (= [{:id 1 :name "phel"} {:id 2 :name "php"}] (pdo/fetch-all stmt)))))
+
+(deftest column-count-on-select
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select * from t1")]
+    (is (= 2 (pdo/column-count stmt)))))
+
+(deftest row-count-on-insert
+  (create-t1 *conn*)
+  (let [stmt (pdo/query *conn* "insert into t1 (name) values ('phel'), ('php')")]
+    (is (= 2 (pdo/row-count stmt)))))
+
+;; ---------------
+;; Prepare/execute
+;; ---------------
+
+(deftest execute-with-map-params
+  (seed-t1 *conn*)
+  (let [stmt (pdo/prepare *conn* "select count(*) from t1 where id = :id")
+        stmt (pdo/execute stmt {:id 1})]
+    (is (= 1 (pdo/fetch-column stmt)))))
+
+(deftest bind-value
+  (seed-t1 *conn*)
+  (testing "default (string) type"
+    (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
+          stmt (pdo/bind-value stmt :id 1)
+          stmt (pdo/execute stmt)]
+      (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
+  (testing "explicit int type"
+    (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
+          stmt (pdo/bind-value stmt :id 1 \PDO/PARAM_INT)
+          stmt (pdo/execute stmt)]
+      (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
+  (testing "explicit string type"
+    (let [stmt (pdo/prepare *conn* "select * from t1 where name = :name")
+          stmt (pdo/bind-value stmt :name "phel" \PDO/PARAM_STR)
+          stmt (pdo/execute stmt)]
+      (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))))
+
+(deftest debug-dump-params-emits-sql-header
+  (seed-t1 *conn*)
+  (let [stmt  (pdo/prepare *conn* "select * from t1 where name = :name")
+        stmt  (pdo/bind-value stmt :name "phel" \PDO/PARAM_STR)
+        info  (pdo/debug-dump-params stmt)
+        lines (values (php->phel (php/preg_split "/\r\n|\r|\n/" info)))]
+    (is (= "SQL: [35] select * from t1 where name = :name" (lines 0)))))
+
+;; ------
+;; Errors
+;; ------
+
+(deftest error-code-on-constraint-violation
+  (seed-t1 *conn*)
+  (try
+    (pdo/exec *conn* "insert into t1 (id, name) values (1, 'php')")
+    (catch \PDOException _e nil))
+  (is (= 23000 (pdo/error-code *conn*))))
+
+(deftest error-info-on-constraint-violation
+  (seed-t1 *conn*)
+  (try
+    (pdo/exec *conn* "insert into t1 (id, name) values (1, 'php')")
+    (catch \PDOException _e nil))
+  (is (= [23000 19 "UNIQUE constraint failed: t1.id"] (pdo/error-info *conn*))))
