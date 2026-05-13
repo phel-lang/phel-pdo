@@ -77,13 +77,12 @@
   "Inserts a row built from a map into table and returns the new last-insert-id.
   Table and column names must be plain identifiers; values are bound as parameters."
   [conn table row]
-  (let [tbl    (check-ident (name table))
-        cols   (into [] (for [k :in (keys row)] (check-ident (name k))))
-        sql    (str "INSERT INTO " tbl
-                    " (" (join-csv cols) ")"
-                    " VALUES (" (join-csv (for [c :in cols] (str ":" c))) ")")
-        params (into {} (for [[k v] :pairs row] [(keyword (name k)) v]))]
-    (-> (prepare conn sql) (execute params))
+  (let [tbl  (check-ident (name table))
+        cols (into [] (for [k :in (keys row)] (check-ident (name k))))
+        sql  (str "INSERT INTO " tbl
+                  " (" (join-csv cols) ")"
+                  " VALUES (" (join-csv (for [c :in cols] (str ":" c))) ")")]
+    (-> (prepare conn sql) (execute row))
     (last-insert-id conn)))
 
 (defn ^int error-code
