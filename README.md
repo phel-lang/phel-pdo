@@ -29,6 +29,10 @@ Requires PHP `>=8.4` and `phel-lang/phel-lang ^0.37`.
     (pdo/execute {:id 1})
     (pdo/fetch))
 ;; => {:id 1 :name "phel"}
+
+;; Insert a row from a map
+(pdo/insert conn :t1 {:name "lisp"})
+;; => 3   ; new last-insert-id
 ```
 
 `pdo/fetch` returns the row as a map keyed by column keyword, or `nil` when no rows remain.
@@ -69,6 +73,7 @@ All functions live in the `phel.pdo` namespace.
 | `exec` | `(exec conn sql)` | Execute SQL, return number of affected rows. |
 | `query` | `(query conn sql & [fetch-mode])` | Run SQL without placeholders, return a statement. |
 | `prepare` | `(prepare conn sql & [options])` | Prepare a statement for later `execute`. |
+| `insert` | `(insert conn table row)` | Insert `row` into `table` via a prepared statement and return the new `last-insert-id`. Identifiers must match `[A-Za-z_][A-Za-z0-9_]*`. |
 | `quote` | `(quote conn string & [type])` | Quote a string for safe embedding in SQL. |
 | `last-insert-id` | `(last-insert-id conn)` | ID of the last inserted row. |
 | `begin` / `commit` / `rollback` | `(begin conn)` … | Transaction control. |

@@ -158,6 +158,58 @@
     (is (= "SQL: [35] select * from t1 where name = :name" (lines 0)))))
 
 ;; ------
+;; Insert
+;; ------
+
+(deftest insert-returns-new-row-id
+  (create-t1 *conn*)
+  (is (= 1 (pdo/insert *conn* :t1 {:name "phel"}))))
+
+(deftest insert-persists-row
+  (create-t1 *conn*)
+  (pdo/insert *conn* :t1 {:name "phel"})
+  (is (= {:id 1 :name "phel"}
+         (pdo/fetch (pdo/query *conn* "select * from t1 where id = 1")))))
+
+(deftest insert-accepts-string-table
+  (create-t1 *conn*)
+  (is (= 1 (pdo/insert *conn* "t1" {:name "phel"}))))
+
+(deftest insert-monotonic-ids
+  (create-t1 *conn*)
+  (pdo/insert *conn* :t1 {:name "a"})
+  (is (= 2 (pdo/insert *conn* :t1 {:name "b"}))))
+
+(deftest insert-rejects-bad-table
+  (create-t1 *conn*)
+  (let [thrown (try
+                 (pdo/insert *conn* "t1; drop table t1" {:name "x"})
+                 false
+                 (catch \InvalidArgumentException _e true))]
+    (is (= true thrown))))
+
+(deftest insert-rejects-bad-column
+  (create-t1 *conn*)
+  (let [thrown (try
+                 (pdo/insert *conn* :t1 {"name) --" "x"})
+                 false
+                 (catch \InvalidArgumentException _e true))]
+    (is (= true thrown))))
+
+(deftest insert-binds-values-safely
+  (create-t1 *conn*)
+  (pdo/insert *conn* :t1 {:name "'; drop table t1; --"})
+  (is (= "'; drop table t1; --"
+         (pdo/fetch-column (pdo/query *conn* "select name from t1 where id = 1")))))
+
+(deftest insert-rolls-back-inside-transaction
+  (create-t1 *conn*)
+  (pdo/begin *conn*)
+  (pdo/insert *conn* :t1 {:name "tmp"})
+  (pdo/rollback *conn*)
+  (is (= 0 (pdo/fetch-column (pdo/query *conn* "select count(*) from t1")))))
+
+;; ------
 ;; Errors
 ;; ------
 
