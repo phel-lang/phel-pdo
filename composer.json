@@ -8,7 +8,7 @@
     ],
     "require": {
         "php": ">=8.4",
-        "phel-lang/phel-lang": "^0.39"
+        "phel-lang/phel-lang": "^0.41"
     },
     "suggest": {
         "phel-lang/phel-sql": "Data-driven SQL DSL (HoneySQL-style). Build [sql params] vectors to feed pdo/prepare + statement/execute."
