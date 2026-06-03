@@ -94,6 +94,7 @@ Returned by `pdo/query` and `pdo/prepare`.
 | `fetch-all` | `(fetch-all stmt)` | Remaining rows as a vector of maps. |
 | `fetch-column` | `(fetch-column stmt & [column])` | Single column from the next row. |
 | `fetch-object` | `(fetch-object stmt & [class-name ctor-args])` | Next row as an object (`stdClass` by default, or an instance of `class-name`), or `nil` if exhausted. |
+| `statement-seq` | `(statement-seq stmt)` | Lazy seq of the remaining rows as maps, fetched one at a time. |
 | `bind-value` | `(bind-value stmt column value & [type])` | Bind a value to a placeholder. Returns the statement. |
 | `bind-param` | `(bind-param stmt column value & [type])` | Bind a parameter, applied at execution time. Returns the statement. |
 | `column-count` | `(column-count stmt)` | Number of columns in the result set. |

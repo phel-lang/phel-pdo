@@ -123,6 +123,21 @@
   (let [stmt (pdo/query *conn* "select * from t1 where id = 999")]
     (is (nil? (pdo/fetch-object stmt)))))
 
+(deftest statement-seq-yields-rows-as-maps
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (let [stmt (pdo/query *conn* "select * from t1")]
+    (is (= [{:id 1 :name "phel"} {:id 2 :name "php"}]
+           (into [] (pdo/statement-seq stmt))))))
+
+(deftest statement-seq-is-lazy-first-only-fetches-head
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (let [stmt (pdo/query *conn* "select * from t1")]
+    (is (= {:id 1 :name "phel"} (first (pdo/statement-seq stmt))))))
+
 (deftest column-count-on-select
   (seed-t1 *conn*)
   (let [stmt (pdo/query *conn* "select * from t1")]
