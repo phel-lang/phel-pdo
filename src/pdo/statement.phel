@@ -12,17 +12,20 @@
     (row->map row)))
 
 (defn fetch-column
-  "Returns a single column from the next row of a result set"
+  "Returns a single column from the next row of a result set. Returns false when
+  the cursor is exhausted (PDO's sentinel); a nil means the column was SQL NULL"
   [stmt & [column]]
   (php/-> (stmt :stmt) (fetchColumn (or column 0))))
 
 (defn fetch-all
-  "Fetches the remaining rows from a result set"
+  "Fetches the remaining rows from a result set as a seq of maps"
   [stmt]
-  (map row->map (php/-> (stmt :stmt) (fetchAll \PDO/FETCH_ASSOC))))
+  (map row->map (or (php/-> (stmt :stmt) (fetchAll \PDO/FETCH_ASSOC)) [])))
 
 (defn statement-seq
-  "Returns a lazy seq of the statement's remaining rows as maps, fetched one at a time"
+  "Returns a lazy seq of the statement's remaining rows as maps, fetched one at a
+  time. The cursor stays open until the seq is fully consumed; on drivers with
+  cursor limits, realise it fully or call close-cursor when done early"
   [stmt]
   (lazy-seq
    (when-let [row (fetch stmt)]
@@ -51,19 +54,25 @@
   stmt)
 
 (defn ^bool next-rowset
-  "Advances to the next rowset of a multi-rowset statement; false when none remain"
+  "Advances to the next rowset of a multi-rowset statement; true when another
+  rowset is available, false when none remain. Throws PDOException on drivers
+  that don't support multiple rowsets (e.g. SQLite)"
   [stmt]
   (php/-> (stmt :stmt) (nextRowset)))
 
 (defn set-fetch-mode
   "Sets the default fetch mode for the statement. Extra args match the mode
-  (e.g. column index for FETCH_COLUMN, class name + ctor args for FETCH_CLASS)"
+  (e.g. column index for FETCH_COLUMN, class name + ctor args for FETCH_CLASS).
+  Note: fetch / fetch-all always request FETCH_ASSOC, so this default applies to
+  the statement's native iteration, not those wrappers"
   [stmt mode & args]
   (let [s (stmt :stmt)]
     (case (count args)
       0 (php/-> s (setFetchMode mode))
       1 (php/-> s (setFetchMode mode (phel->php (first args))))
-      2 (php/-> s (setFetchMode mode (phel->php (first args)) (phel->php (second args))))))
+      2 (php/-> s (setFetchMode mode (phel->php (first args)) (phel->php (second args))))
+      (throw (php/new \InvalidArgumentException
+                      (str "set-fetch-mode accepts at most 2 extra args, got " (count args))))))
   stmt)
 
 (defn ^int column-count
@@ -82,18 +91,26 @@
   (when-let [meta (php/-> (stmt :stmt) (getColumnMeta column))]
     (row->map meta)))
 
+(defn- param-key
+  "PDO parameter identifier: an integer is a 1-based positional index (kept as-is);
+  anything else is a named placeholder coerced to a string."
+  [column]
+  (if (int? column) column (str column)))
+
 (defn bind-value
-  "Binds a value to a parameter"
+  "Binds a value to a parameter (named placeholder or 1-based positional index)"
   [stmt column value & [type]]
   (php/-> (stmt :stmt)
-          (bindValue (str column) value (or type \PDO/PARAM_STR)))
+          (bindValue (param-key column) value (or type \PDO/PARAM_STR)))
   stmt)
 
 (defn bind-param
-  "Binds a parameter to a value, applied at execution time"
+  "Binds a value to a parameter. The value is captured at call time: Phel values
+  are immutable, so unlike PHP's by-reference bindParam there is nothing to mutate
+  before execute - for fresh values per run, re-bind or pass a params map to execute"
   [stmt column value & [type]]
   (php/-> (stmt :stmt)
-          (bindParam (str column) value (or type \PDO/PARAM_STR)))
+          (bindParam (param-key column) value (or type \PDO/PARAM_STR)))
   stmt)
 
 (defn ^string debug-dump-params

@@ -83,13 +83,15 @@ phel-pdo sets `ERRMODE_EXCEPTION` in `connect`. If you've overridden it:
 
 …then errors go silent. Either revert it (`\PDO/ERRMODE_EXCEPTION`) or read `pdo/error-code` / `pdo/error-info` after every call. The default is the saner mode for almost every app.
 
-## `last-insert-id` returns 0 on PostgreSQL
+## `last-insert-id` is wrong on PostgreSQL
 
 PostgreSQL needs the sequence name. The wrapped `pdo/last-insert-id` calls `lastInsertId()` with no args. Until a sequence-aware wrapper lands, drop down to raw PDO:
 
 ```clojure
-(php/intval (php/-> (conn :pdo) (lastInsertId "t1_id_seq")))
+(php/-> (conn :pdo) (lastInsertId "t1_id_seq"))   ; => "42" (string)
 ```
+
+`pdo/last-insert-id` returns the value as a string (as PDO does); coerce with `php/intval` only when you actually need a number.
 
 ## Method I want isn't wrapped
 

@@ -32,7 +32,7 @@ Requires PHP `>=8.4` and `phel-lang/phel-lang ^0.37`.
 
 ;; Insert a row from a map
 (pdo/insert conn :t1 {:name "lisp"})
-;; => 3   ; new last-insert-id
+;; => "3"   ; new last-insert-id (string, as PDO reports it)
 ```
 
 `pdo/fetch` returns the row as a map keyed by column keyword, or `nil` when no rows remain.
@@ -74,15 +74,15 @@ All functions live in the `phel.pdo` namespace.
 | `exec` | `(exec conn sql)` | Execute SQL, return number of affected rows. |
 | `query` | `(query conn sql & [fetch-mode])` | Run SQL without placeholders, return a statement. |
 | `prepare` | `(prepare conn sql & [options])` | Prepare a statement for later `execute`. |
-| `insert` | `(insert conn table row)` | Insert `row` into `table` via a prepared statement and return the new `last-insert-id`. Identifiers must match `[A-Za-z_][A-Za-z0-9_]*`. |
+| `insert` | `(insert conn table row)` | Insert a non-empty `row` map into `table` via a prepared statement and return the new `last-insert-id` (string). Identifiers must match `[A-Za-z_][A-Za-z0-9_]*`. |
 | `quote` | `(quote conn string & [type])` | Quote a string for safe embedding in SQL. |
-| `last-insert-id` | `(last-insert-id conn)` | ID of the last inserted row. |
+| `last-insert-id` | `(last-insert-id conn)` | ID of the last inserted row, as a string (as PDO reports it). |
 | `begin` / `commit` / `rollback` | `(begin conn)` … | Transaction control. |
 | `in-transaction` | `(in-transaction conn)` | `true` if a transaction is active. |
 | `with-transaction` | `(with-transaction conn & body)` | Run `body` in a transaction: commit + return last value, or rollback + re-throw. Runs inline if already in a transaction. |
 | `get-attribute` / `set-attribute` | `(get-attribute handle attr)` / `(set-attribute handle attr value)` | PDO attribute access; `handle` is a connection or a statement. |
-| `get-available-drivers` | `(get-available-drivers conn)` | Vector of installed PDO drivers. |
-| `error-code` | `(error-code handle)` | SQLSTATE of the last operation; `handle` is a connection or a statement. |
+| `get-available-drivers` | `(get-available-drivers)` | Vector of installed PDO drivers (static; no connection needed). |
+| `error-code` | `(error-code handle)` | SQLSTATE string of the last operation; `handle` is a connection or a statement. |
 | `error-info` | `(error-info handle)` | `[sqlstate driver-code driver-message]`; `handle` is a connection or a statement. |
 
 ### Statement

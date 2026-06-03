@@ -9,6 +9,13 @@
   [handle]
   (if (statement? handle) (handle :stmt) (handle :pdo)))
 
+(defn- options->php
+  "Builds a PHP array from a Phel options map. Unlike phel->php it preserves
+  integer keys, which PDO attribute maps use (e.g. \\PDO/ATTR_TIMEOUT)."
+  [options]
+  (apply php-associative-array
+         (mapcat (fn [[k v]] [k (phel->php v)]) options)))
+
 (defn ^bool set-attribute
   "Set an attribute on a connection or statement"
   [handle attribute value]
@@ -23,7 +30,7 @@
   "Connect database and return connection object.
   Throws a PDOException if the attempt to connect to the requested database fails."
   [dsn & [username password options]]
-  (let [conn (connection (php/new \PDO dsn username password options))]
+  (let [conn (connection (php/new \PDO dsn username password (options->php (or options {}))))]
     (set-attribute conn \PDO/ATTR_ERRMODE \PDO/ERRMODE_EXCEPTION)
     conn))
 
@@ -33,6 +40,8 @@
   closes a connection it did not open. Pass {:apply-defaults true} to set
   phel-pdo's ERRMODE_EXCEPTION default on the wrapped handle."
   [pdo & [options]]
+  (when-not (php/instanceof pdo \PDO)
+    (throw (php/new \InvalidArgumentException "from-connection expects a \\PDO instance")))
   (let [conn (connection pdo)]
     (when (get options :apply-defaults)
       (set-attribute conn \PDO/ATTR_ERRMODE \PDO/ERRMODE_EXCEPTION))
@@ -50,7 +59,7 @@
   "Prepares a statement for execution and returns a statement object"
   [conn stmt & [options]]
   (statement
-   (php/-> (conn :pdo) (prepare stmt (phel->php (or options {}))))))
+   (php/-> (conn :pdo) (prepare stmt (options->php (or options {}))))))
 
 (defn query
   "Prepares and executes an SQL statement without placeholders"
@@ -78,10 +87,12 @@
   [conn string & [type]]
   (php/-> (conn :pdo) (quote string (or type \PDO/PARAM_STR))))
 
-(defn ^int last-insert-id
-  "Returns the ID of the last inserted row or sequence value"
+(defn ^string last-insert-id
+  "Returns the ID of the last inserted row or sequence value, as a string (as PDO
+  reports it). Returning the raw string is lossless for big integers and named
+  sequences; coerce with php/intval at the call site when you need a number"
   [conn]
-  (php/intval (php/-> (conn :pdo) (lastInsertId))))
+  (php/-> (conn :pdo) (lastInsertId)))
 
 (defn- check-ident [s]
   (if (= 1 (php/preg_match "/^[A-Za-z_][A-Za-z0-9_]*$/" s))
@@ -91,10 +102,13 @@
 (defn- join-csv [xs]
   (php/implode ", " (phel->php (into [] xs))))
 
-(defn ^int insert
-  "Inserts a row built from a map into table and returns the new last-insert-id.
-  Table and column names must be plain identifiers; values are bound as parameters."
+(defn ^string insert
+  "Inserts a row built from a map into table and returns the new last-insert-id
+  (a string, as PDO reports it). Table and column names must be plain identifiers;
+  values are bound as parameters."
   [conn table row]
+  (when (empty? row)
+    (throw (php/new \InvalidArgumentException "insert row map must not be empty")))
   (let [tbl  (check-ident (name table))
         cols (into [] (for [k :in (keys row)] (check-ident (name k))))
         sql  (str "INSERT INTO " tbl
@@ -103,17 +117,20 @@
     (-> (prepare conn sql) (execute row))
     (last-insert-id conn)))
 
-(defn ^int error-code
-  "Fetch the SQLSTATE associated with the last operation on a connection or statement"
+(defn ^string error-code
+  "Fetch the SQLSTATE associated with the last operation on a connection or statement.
+  SQLSTATE is a 5-character code (e.g. \"23000\", \"HY000\"), returned as a string"
   [handle]
-  (php/intval (php/-> (handle-target handle) (errorCode))))
+  (php/-> (handle-target handle) (errorCode)))
 
 (defn error-info
-  "Fetch extended error information associated with the last operation on a connection or statement"
+  "Fetch extended error information associated with the last operation on a connection
+  or statement, as [sqlstate driver-code driver-message]. sqlstate is the SQLSTATE
+  string; driver-code is the driver-specific integer"
   [handle]
   (let [[sqlstate driver-code driver-message]
         (values (php->phel (php/-> (handle-target handle) (errorInfo))))]
-    [(php/intval sqlstate) (php/intval driver-code) driver-message]))
+    [sqlstate (php/intval driver-code) driver-message]))
 
 (defn ^bool in-transaction
   "Checks if inside a transaction"
@@ -139,8 +156,9 @@
              (throw e#)))))))
 
 (defn get-available-drivers
-  "Return an array of available PDO drivers"
-  [conn]
-  (values (php->phel (php/-> (conn :pdo) (getAvailableDrivers)))))
+  "Return a vector of available PDO driver names. PDO::getAvailableDrivers is
+  static, so no connection is needed"
+  []
+  (values (php->phel (php/:: \PDO (getAvailableDrivers)))))
 
 (load "pdo/statement")

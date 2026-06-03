@@ -15,7 +15,9 @@
   (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))"))
 
 (defn- insert-name [conn name]
-  (pdo/exec conn (format "insert into t1 (name) values ('%s')" name)))
+  (-> (pdo/prepare conn "insert into t1 (name) values (:name)")
+      (pdo/execute {:name name})
+      (pdo/row-count)))
 
 (defn- seed-t1
   "Create t1 with one row named 'phel'."
@@ -40,6 +42,13 @@
 (deftest attribute-roundtrip
   (pdo/set-attribute *conn* \PDO/ATTR_ERRMODE \PDO/ERRMODE_SILENT)
   (is (= \PDO/ERRMODE_SILENT (pdo/get-attribute *conn* \PDO/ATTR_ERRMODE))))
+
+(deftest connect-accepts-options-map
+  ;; options must be converted from a Phel map to a PHP array
+  (let [conn (pdo/connect "sqlite::memory:" nil nil {\PDO/ATTR_TIMEOUT 5})]
+    (is (struct? conn))
+    (pdo/exec conn "create table t1 (id integer)")
+    (is (= 1 (pdo/exec conn "insert into t1 values (1)")))))
 
 (deftest from-connection-wraps-existing-pdo
   (let [raw  (php/new \PDO "sqlite::memory:")
@@ -69,7 +78,7 @@
       (is (= \PDO/ERRMODE_EXCEPTION (pdo/get-attribute conn \PDO/ATTR_ERRMODE))))))
 
 (deftest available-drivers-includes-sqlite
-  (is (contains-value? (pdo/get-available-drivers *conn*) "sqlite")))
+  (is (contains-value? (pdo/get-available-drivers) "sqlite")))
 
 (deftest quote-escapes-single-quotes
   (is (= "'I''m fine.'" (pdo/quote *conn* "I'm fine."))))
@@ -87,7 +96,7 @@
 
 (deftest last-insert-id-reflects-last-row
   (seed-t1 *conn*)
-  (is (= 1 (pdo/last-insert-id *conn*))))
+  (is (= "1" (pdo/last-insert-id *conn*))))
 
 ;; ------------
 ;; Transactions
@@ -189,6 +198,11 @@
     (is (= [{:id 1 :name "phel"} {:id 2 :name "php"}]
            (into [] (pdo/statement-seq stmt))))))
 
+(deftest statement-seq-empty-result-is-empty-seq
+  (create-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select * from t1")]
+    (is (= [] (into [] (pdo/statement-seq stmt))))))
+
 (deftest statement-seq-is-lazy-first-only-fetches-head
   (create-t1 *conn*)
   (insert-name *conn* "phel")
@@ -254,6 +268,14 @@
                  stmt (pdo/execute stmt)]
              (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))))
 
+(deftest bind-value-by-positional-index
+  (seed-t1 *conn*)
+  ;; integer column is a 1-based positional placeholder, kept as an int (not "1")
+  (let [stmt (pdo/prepare *conn* "select * from t1 where id = ?")
+        stmt (pdo/bind-value stmt 1 1 \PDO/PARAM_INT)
+        stmt (pdo/execute stmt)]
+    (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
+
 (deftest close-cursor-allows-re-execution
   (seed-t1 *conn*)
   (let [stmt (pdo/prepare *conn* "select name from t1 where id = :id")
@@ -263,6 +285,9 @@
         stmt (pdo/execute stmt {:id 1})]
     (is (= "phel" (pdo/fetch-column stmt)))))
 
+;; set-fetch-mode changes the statement's *native* default fetch mode. pdo/fetch
+;; and pdo/fetch-all always request FETCH_ASSOC, so the only way to observe the
+;; default is the raw PDOStatement::fetch - hence the (stmt :stmt) reach-through here.
 (deftest set-fetch-mode-column-returns-scalar
   (seed-t1 *conn*)
   (let [stmt (pdo/prepare *conn* "select name from t1")
@@ -286,6 +311,15 @@
                   (pdo/next-rowset stmt)
                   (catch \PDOException _e :unsupported))]
     (is (or (= false outcome) (= :unsupported outcome)))))
+
+(deftest set-fetch-mode-rejects-too-many-args
+  (seed-t1 *conn*)
+  (let [stmt   (pdo/prepare *conn* "select * from t1")
+        thrown (try
+                 (pdo/set-fetch-mode stmt \PDO/FETCH_CLASS "stdClass" [] :extra)
+                 false
+                 (catch \InvalidArgumentException _e true))]
+    (is (= true thrown))))
 
 (deftest set-attribute-dispatches-to-statement
   (seed-t1 *conn*)
@@ -323,7 +357,15 @@
 
 (deftest insert-returns-new-row-id
   (create-t1 *conn*)
-  (is (= 1 (pdo/insert *conn* :t1 {:name "phel"}))))
+  (is (= "1" (pdo/insert *conn* :t1 {:name "phel"}))))
+
+(deftest insert-rejects-empty-row
+  (create-t1 *conn*)
+  (let [thrown (try
+                 (pdo/insert *conn* :t1 {})
+                 false
+                 (catch \InvalidArgumentException _e true))]
+    (is (= true thrown))))
 
 (deftest insert-persists-row
   (create-t1 *conn*)
@@ -333,12 +375,12 @@
 
 (deftest insert-accepts-string-table
   (create-t1 *conn*)
-  (is (= 1 (pdo/insert *conn* "t1" {:name "phel"}))))
+  (is (= "1" (pdo/insert *conn* "t1" {:name "phel"}))))
 
 (deftest insert-monotonic-ids
   (create-t1 *conn*)
   (pdo/insert *conn* :t1 {:name "a"})
-  (is (= 2 (pdo/insert *conn* :t1 {:name "b"}))))
+  (is (= "2" (pdo/insert *conn* :t1 {:name "b"}))))
 
 (deftest insert-rejects-bad-table
   (create-t1 *conn*)
@@ -378,14 +420,14 @@
   (try
     (pdo/exec *conn* "insert into t1 (id, name) values (1, 'php')")
     (catch \PDOException _e nil))
-  (is (= 23000 (pdo/error-code *conn*))))
+  (is (= "23000" (pdo/error-code *conn*))))
 
 (deftest error-info-on-constraint-violation
   (seed-t1 *conn*)
   (try
     (pdo/exec *conn* "insert into t1 (id, name) values (1, 'php')")
     (catch \PDOException _e nil))
-  (is (= [23000 19 "UNIQUE constraint failed: t1.id"] (pdo/error-info *conn*))))
+  (is (= ["23000" 19 "UNIQUE constraint failed: t1.id"] (pdo/error-info *conn*))))
 
 (deftest statement-error-code-on-constraint-violation
   (seed-t1 *conn*)
@@ -393,7 +435,7 @@
     (try
       (pdo/execute stmt)
       (catch \PDOException _e nil))
-    (is (= 23000 (pdo/error-code stmt)))))
+    (is (= "23000" (pdo/error-code stmt)))))
 
 (deftest statement-error-info-on-constraint-violation
   (seed-t1 *conn*)
@@ -401,4 +443,4 @@
     (try
       (pdo/execute stmt)
       (catch \PDOException _e nil))
-    (is (= [23000 19 "UNIQUE constraint failed: t1.id"] (pdo/error-info stmt)))))
+    (is (= ["23000" 19 "UNIQUE constraint failed: t1.id"] (pdo/error-info stmt)))))
