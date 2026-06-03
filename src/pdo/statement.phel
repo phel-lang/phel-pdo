@@ -43,6 +43,17 @@
   (php/-> (stmt :stmt) (closeCursor))
   stmt)
 
+(defn set-fetch-mode
+  "Sets the default fetch mode for the statement. Extra args match the mode
+  (e.g. column index for FETCH_COLUMN, class name + ctor args for FETCH_CLASS)"
+  [stmt mode & args]
+  (let [s (stmt :stmt)]
+    (case (count args)
+      0 (php/-> s (setFetchMode mode))
+      1 (php/-> s (setFetchMode mode (phel->php (first args))))
+      2 (php/-> s (setFetchMode mode (phel->php (first args)) (phel->php (second args))))))
+  stmt)
+
 (defn ^int column-count
   "Returns the number of columns in the result set"
   [stmt]
@@ -82,4 +93,3 @@
 ;; PDOStatement::getColumnMeta   — Returns metadata for a column in a result set
 ;; PDOStatement::getIterator     — Gets result set iterator
 ;; PDOStatement::nextRowset      — Advances to the next rowset in a multi-rowset statement handle
-;; PDOStatement::setFetchMode    — Set the default fetch mode for this statement

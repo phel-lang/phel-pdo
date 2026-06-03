@@ -99,6 +99,7 @@ Returned by `pdo/query` and `pdo/prepare`.
 | `column-count` | `(column-count stmt)` | Number of columns in the result set. |
 | `row-count` | `(row-count stmt)` | Rows affected by the last DML. |
 | `close-cursor` | `(close-cursor stmt)` | Free the cursor so the statement can be re-executed. Returns the statement. |
+| `set-fetch-mode` | `(set-fetch-mode stmt mode & args)` | Set the statement's default fetch mode (extra args match the mode). Returns the statement. |
 | `debug-dump-params` | `(debug-dump-params stmt)` | Dump prepared statement info as a string. |
 
 > [!NOTE]

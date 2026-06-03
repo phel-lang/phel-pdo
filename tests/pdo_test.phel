@@ -183,6 +183,20 @@
         stmt (pdo/execute stmt {:id 1})]
     (is (= "phel" (pdo/fetch-column stmt)))))
 
+(deftest set-fetch-mode-column-returns-scalar
+  (seed-t1 *conn*)
+  (let [stmt (pdo/prepare *conn* "select name from t1")
+        stmt (pdo/set-fetch-mode stmt \PDO/FETCH_COLUMN 0)
+        stmt (pdo/execute stmt)]
+    (is (= "phel" (php/-> (stmt :stmt) (fetch))))))
+
+(deftest set-fetch-mode-num-returns-positional-row
+  (seed-t1 *conn*)
+  (let [stmt (pdo/prepare *conn* "select id, name from t1")
+        stmt (pdo/set-fetch-mode stmt \PDO/FETCH_NUM)
+        stmt (pdo/execute stmt)]
+    (is (= [1 "phel"] (php->phel (php/-> (stmt :stmt) (fetch)))))))
+
 (deftest set-attribute-dispatches-to-statement
   (seed-t1 *conn*)
   ;; SQLite rejects statement attributes; depending on the driver build this is

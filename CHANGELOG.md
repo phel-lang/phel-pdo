@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pdo/bind-param` - wrap `PDOStatement::bindParam`; binds a parameter applied at execution time ([#8]).
 - `pdo/close-cursor` - wrap `PDOStatement::closeCursor`; frees the cursor so the statement can be re-executed ([#9]).
 - `pdo/fetch-object` - wrap `PDOStatement::fetchObject`; returns the next row as an object (`stdClass` or a named class), or `nil` when exhausted ([#11]).
+- `pdo/set-fetch-mode` - wrap `PDOStatement::setFetchMode`; sets the statement's default fetch mode, with mode-specific extra args ([#13]).
 
 ### Changed
 
