@@ -2,15 +2,22 @@
 
 (defstruct connection [pdo])
 
+(declare statement?)
+
+(defn- attr-target
+  "The PDO handle behind a connection or statement struct."
+  [handle]
+  (if (statement? handle) (handle :stmt) (handle :pdo)))
+
 (defn ^bool set-attribute
-  "Set an attribute"
-  [conn attribute value]
-  (php/-> (conn :pdo) (setAttribute attribute value)))
+  "Set an attribute on a connection or statement"
+  [handle attribute value]
+  (php/-> (attr-target handle) (setAttribute attribute value)))
 
 (defn get-attribute
-  "Retrieve a database connection attribute"
-  [conn attribute]
-  (php/-> (conn :pdo) (getAttribute attribute)))
+  "Retrieve an attribute from a connection or statement"
+  [handle attribute]
+  (php/-> (attr-target handle) (getAttribute attribute)))
 
 (defn connect
   "Connect database and return connection object.

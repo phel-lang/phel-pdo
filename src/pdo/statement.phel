@@ -79,9 +79,7 @@
 ;; PDOStatement::bindColumn      — Bind a column to a PHP variable
 ;; PDOStatement::errorCode       — Fetch the SQLSTATE associated with the last operation on the statement handle
 ;; PDOStatement::errorInfo       — Fetch extended error information associated with the last operation on the statement handle
-;; PDOStatement::getAttribute    — Retrieve a statement attribute
 ;; PDOStatement::getColumnMeta   — Returns metadata for a column in a result set
 ;; PDOStatement::getIterator     — Gets result set iterator
 ;; PDOStatement::nextRowset      — Advances to the next rowset in a multi-rowset statement handle
-;; PDOStatement::setAttribute    — Set a statement attribute
 ;; PDOStatement::setFetchMode    — Set the default fetch mode for this statement
