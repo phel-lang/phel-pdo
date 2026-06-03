@@ -21,6 +21,13 @@
   [stmt]
   (map row->map (php/-> (stmt :stmt) (fetchAll \PDO/FETCH_ASSOC))))
 
+(defn statement-seq
+  "Returns a lazy seq of the statement's remaining rows as maps, fetched one at a time"
+  [stmt]
+  (lazy-seq
+   (when-let [row (fetch stmt)]
+     (cons row (statement-seq stmt)))))
+
 (defn fetch-object
   "Fetches the next row as an object (stdClass by default, or an instance of class-name), or nil if no more rows"
   [stmt & [class-name ctor-args]]
@@ -94,5 +101,4 @@
 ;; Not implemented yet:
 ;;
 ;; PDOStatement::bindColumn      — Bind a column to a PHP variable
-;; PDOStatement::getIterator     — Gets result set iterator
 ;; PDOStatement::nextRowset      — Advances to the next rowset in a multi-rowset statement handle
