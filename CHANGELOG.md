@@ -24,6 +24,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `pdo/get-attribute` / `pdo/set-attribute` now dispatch on the handle: pass a connection (as before) or a statement to reach `PDOStatement::getAttribute` / `setAttribute` ([#12]).
 - `pdo/error-code` / `pdo/error-info` now dispatch on the handle: pass a statement to read `PDOStatement::errorCode` / `errorInfo` ([#14]).
+- **BC** `pdo/error-code` now returns the SQLSTATE **string** (e.g. `"23000"`, `"HY000"`) instead of an int, and `pdo/error-info`'s first element is likewise the SQLSTATE string (the `driver-code` second element stays an int). SQLSTATE is a 5-character code; the old `intval` corrupted non-numeric states like `HY000` (→ `0`) and `42S02` (→ `42`).
+- **BC** `pdo/last-insert-id` and `pdo/insert` now return the id as a **string** (as PDO reports it) instead of coercing to int. This is lossless for big integers and PostgreSQL named sequences; call `php/intval` at the call site if you need a number.
+- **BC** `pdo/get-available-drivers` no longer takes a connection argument - `PDO::getAvailableDrivers` is static. Call `(pdo/get-available-drivers)`.
+
+### Fixed
+
+- `pdo/connect` and `pdo/prepare` now convert a Phel options map (with integer `\PDO/ATTR_*` keys) into a PHP array; previously passing an options map raised a `TypeError` because `phel->php` cannot convert integer map keys.
+- `pdo/bind-value` / `pdo/bind-param` now keep an integer `column` as a 1-based positional index instead of stringifying it, fixing positional (`?`) parameter binding.
+- `pdo/insert` now rejects an empty `row` map with an `InvalidArgumentException` instead of generating invalid SQL.
+- `pdo/set-fetch-mode` now throws an `InvalidArgumentException` on unsupported arity (more than 2 extra args) instead of silently doing nothing.
 
 ## [0.1.0] - 2026-05-13
 

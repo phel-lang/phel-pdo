@@ -115,10 +115,12 @@ Check state with `(pdo/in-transaction conn)`.
 ```clojure
 (pdo/exec conn "insert into t1 (name) values ('phel')")
 (pdo/last-insert-id conn)
-;; => 1
+;; => "1"
 ```
 
-Returns an `int`. On PostgreSQL pass the sequence name to raw PDO (not yet wrapped - drop into `(php/-> (conn :pdo) (lastInsertId "seq"))` for now).
+Returns a `string` (as PDO reports it) - lossless for big integers and named
+sequences; coerce with `php/intval` when you need a number. On PostgreSQL pass the
+sequence name to raw PDO (not yet wrapped - drop into `(php/-> (conn :pdo) (lastInsertId "seq"))` for now).
 
 ## Quoting
 
@@ -140,11 +142,11 @@ Pass a type as the third arg if you need something other than `PARAM_STR`.
   (pdo/exec conn "insert into t1 (id, name) values (1, 'dup')")
   (catch \PDOException _e nil))
 
-(pdo/error-code conn)   ; => 23000
-(pdo/error-info conn)   ; => [23000 19 "UNIQUE constraint failed: t1.id"]
+(pdo/error-code conn)   ; => "23000"
+(pdo/error-info conn)   ; => ["23000" 19 "UNIQUE constraint failed: t1.id"]
 ```
 
-`error-info` returns `[sqlstate driver-code driver-message]` with the first two coerced to int.
+`error-code` returns the SQLSTATE string. `error-info` returns `[sqlstate driver-code driver-message]` - `sqlstate` is the SQLSTATE string, `driver-code` the driver-specific integer.
 
 ## Attributes
 
@@ -160,7 +162,7 @@ Read or change PDO attributes per connection:
 ## Available drivers
 
 ```clojure
-(pdo/get-available-drivers conn)
+(pdo/get-available-drivers)
 ;; => ["mysql" "sqlite" ...]
 ```
 
