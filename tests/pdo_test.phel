@@ -219,6 +219,16 @@
         stmt (pdo/execute stmt)]
     (is (= [1 "phel"] (php->phel (php/-> (stmt :stmt) (fetch)))))))
 
+(deftest next-rowset-rejected-on-sqlite
+  (seed-t1 *conn*)
+  ;; SQLite has no multi-rowset support; depending on the driver build this is
+  ;; either a false return or a PDOException - both prove the call reached nextRowset.
+  (let [stmt    (pdo/query *conn* "select * from t1")
+        outcome (try
+                  (pdo/next-rowset stmt)
+                  (catch \PDOException _e :unsupported))]
+    (is (or (= false outcome) (= :unsupported outcome)))))
+
 (deftest set-attribute-dispatches-to-statement
   (seed-t1 *conn*)
   ;; SQLite rejects statement attributes; depending on the driver build this is

@@ -50,6 +50,11 @@
   (php/-> (stmt :stmt) (closeCursor))
   stmt)
 
+(defn ^bool next-rowset
+  "Advances to the next rowset of a multi-rowset statement; false when none remain"
+  [stmt]
+  (php/-> (stmt :stmt) (nextRowset)))
+
 (defn set-fetch-mode
   "Sets the default fetch mode for the statement. Extra args match the mode
   (e.g. column index for FETCH_COLUMN, class name + ctor args for FETCH_CLASS)"
@@ -101,4 +106,3 @@
 ;; Not implemented yet:
 ;;
 ;; PDOStatement::bindColumn      — Bind a column to a PHP variable
-;; PDOStatement::nextRowset      — Advances to the next rowset in a multi-rowset statement handle
