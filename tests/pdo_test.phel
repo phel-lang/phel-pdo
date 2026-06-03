@@ -183,6 +183,28 @@
         stmt (pdo/execute stmt {:id 1})]
     (is (= "phel" (pdo/fetch-column stmt)))))
 
+(deftest set-attribute-dispatches-to-statement
+  (seed-t1 *conn*)
+  ;; SQLite rejects statement attributes; depending on the driver build this is
+  ;; either a false return or a PDOException - both prove the call reached the statement.
+  (let [stmt    (pdo/prepare *conn* "select * from t1")
+        outcome (try
+                  (pdo/set-attribute stmt \PDO/ATTR_CURSOR \PDO/CURSOR_FWDONLY)
+                  (catch \PDOException _e :unsupported))]
+    (is (or (= false outcome) (= :unsupported outcome)))))
+
+(deftest get-attribute-dispatches-to-statement
+  (seed-t1 *conn*)
+  (testing "connection branch still returns a value"
+           (is (= \PDO/ERRMODE_EXCEPTION (pdo/get-attribute *conn* \PDO/ATTR_ERRMODE))))
+  (testing "statement branch routes to the PDOStatement (SQLite reports unsupported)"
+           (let [stmt  (pdo/prepare *conn* "select * from t1")
+                 threw (try
+                         (pdo/get-attribute stmt \PDO/ATTR_CURSOR)
+                         false
+                         (catch \PDOException _e true))]
+             (is (= true threw)))))
+
 (deftest debug-dump-params-emits-sql-header
   (seed-t1 *conn*)
   (let [stmt  (pdo/prepare *conn* "select * from t1 where name = :name")

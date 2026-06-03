@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pdo/close-cursor` - wrap `PDOStatement::closeCursor`; frees the cursor so the statement can be re-executed ([#9]).
 - `pdo/fetch-object` - wrap `PDOStatement::fetchObject`; returns the next row as an object (`stdClass` or a named class), or `nil` when exhausted ([#11]).
 
+### Changed
+
+- `pdo/get-attribute` / `pdo/set-attribute` now dispatch on the handle: pass a connection (as before) or a statement to reach `PDOStatement::getAttribute` / `setAttribute` ([#12]).
+
 ## [0.1.0] - 2026-05-13
 
 ### Changed
