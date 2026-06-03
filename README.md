@@ -80,8 +80,8 @@ All functions live in the `phel.pdo` namespace.
 | `in-transaction` | `(in-transaction conn)` | `true` if a transaction is active. |
 | `get-attribute` / `set-attribute` | `(get-attribute handle attr)` / `(set-attribute handle attr value)` | PDO attribute access; `handle` is a connection or a statement. |
 | `get-available-drivers` | `(get-available-drivers conn)` | Vector of installed PDO drivers. |
-| `error-code` | `(error-code conn)` | SQLSTATE of the last operation. |
-| `error-info` | `(error-info conn)` | `[sqlstate driver-code driver-message]`. |
+| `error-code` | `(error-code handle)` | SQLSTATE of the last operation; `handle` is a connection or a statement. |
+| `error-info` | `(error-info handle)` | `[sqlstate driver-code driver-message]`; `handle` is a connection or a statement. |
 
 ### Statement
 

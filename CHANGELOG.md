@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `pdo/get-attribute` / `pdo/set-attribute` now dispatch on the handle: pass a connection (as before) or a statement to reach `PDOStatement::getAttribute` / `setAttribute` ([#12]).
+- `pdo/error-code` / `pdo/error-info` now dispatch on the handle: pass a statement to read `PDOStatement::errorCode` / `errorInfo` ([#14]).
 
 ## [0.1.0] - 2026-05-13
 
