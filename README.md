@@ -97,6 +97,7 @@ Returned by `pdo/query` and `pdo/prepare`.
 | `bind-param` | `(bind-param stmt column value & [type])` | Bind a parameter, applied at execution time. Returns the statement. |
 | `column-count` | `(column-count stmt)` | Number of columns in the result set. |
 | `row-count` | `(row-count stmt)` | Rows affected by the last DML. |
+| `close-cursor` | `(close-cursor stmt)` | Free the cursor so the statement can be re-executed. Returns the statement. |
 | `debug-dump-params` | `(debug-dump-params stmt)` | Dump prepared statement info as a string. |
 
 > [!NOTE]

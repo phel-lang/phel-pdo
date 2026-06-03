@@ -29,6 +29,12 @@
     (php/-> (stmt :stmt) (execute (phel->php params))))
   stmt)
 
+(defn close-cursor
+  "Closes the cursor, enabling the statement to be executed again"
+  [stmt]
+  (php/-> (stmt :stmt) (closeCursor))
+  stmt)
+
 (defn ^int column-count
   "Returns the number of columns in the result set"
   [stmt]
@@ -63,7 +69,6 @@
 ;; Not implemented yet:
 ;;
 ;; PDOStatement::bindColumn      — Bind a column to a PHP variable
-;; PDOStatement::closeCursor     — Closes the cursor, enabling the statement to be executed again
 ;; PDOStatement::errorCode       — Fetch the SQLSTATE associated with the last operation on the statement handle
 ;; PDOStatement::errorInfo       — Fetch extended error information associated with the last operation on the statement handle
 ;; PDOStatement::fetchObject     — Fetches the next row and returns it as an object

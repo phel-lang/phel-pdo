@@ -162,6 +162,15 @@
                  stmt (pdo/execute stmt)]
              (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))))
 
+(deftest close-cursor-allows-re-execution
+  (seed-t1 *conn*)
+  (let [stmt (pdo/prepare *conn* "select name from t1 where id = :id")
+        stmt (pdo/execute stmt {:id 1})
+        _    (pdo/fetch stmt)
+        stmt (pdo/close-cursor stmt)
+        stmt (pdo/execute stmt {:id 1})]
+    (is (= "phel" (pdo/fetch-column stmt)))))
+
 (deftest debug-dump-params-emits-sql-header
   (seed-t1 *conn*)
   (let [stmt  (pdo/prepare *conn* "select * from t1 where name = :name")
