@@ -149,6 +149,19 @@
                  stmt (pdo/execute stmt)]
              (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))))
 
+(deftest bind-param
+  (seed-t1 *conn*)
+  (testing "default (string) type"
+           (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
+                 stmt (pdo/bind-param stmt :id 1)
+                 stmt (pdo/execute stmt)]
+             (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
+  (testing "explicit int type"
+           (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
+                 stmt (pdo/bind-param stmt :id 1 \PDO/PARAM_INT)
+                 stmt (pdo/execute stmt)]
+             (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))))
+
 (deftest debug-dump-params-emits-sql-header
   (seed-t1 *conn*)
   (let [stmt  (pdo/prepare *conn* "select * from t1 where name = :name")

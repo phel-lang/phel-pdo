@@ -94,6 +94,7 @@ Returned by `pdo/query` and `pdo/prepare`.
 | `fetch-all` | `(fetch-all stmt)` | Remaining rows as a vector of maps. |
 | `fetch-column` | `(fetch-column stmt & [column])` | Single column from the next row. |
 | `bind-value` | `(bind-value stmt column value & [type])` | Bind a value to a placeholder. Returns the statement. |
+| `bind-param` | `(bind-param stmt column value & [type])` | Bind a parameter, applied at execution time. Returns the statement. |
 | `column-count` | `(column-count stmt)` | Number of columns in the result set. |
 | `row-count` | `(row-count stmt)` | Rows affected by the last DML. |
 | `debug-dump-params` | `(debug-dump-params stmt)` | Dump prepared statement info as a string. |

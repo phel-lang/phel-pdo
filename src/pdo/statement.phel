@@ -46,6 +46,13 @@
           (bindValue (str column) value (or type \PDO/PARAM_STR)))
   stmt)
 
+(defn bind-param
+  "Binds a parameter to a value, applied at execution time"
+  [stmt column value & [type]]
+  (php/-> (stmt :stmt)
+          (bindParam (str column) value (or type \PDO/PARAM_STR)))
+  stmt)
+
 (defn ^string debug-dump-params
   "Returns an SQL prepared command"
   [stmt]
@@ -56,7 +63,6 @@
 ;; Not implemented yet:
 ;;
 ;; PDOStatement::bindColumn      — Bind a column to a PHP variable
-;; PDOStatement::bindParam       — Binds a parameter to the specified variable name
 ;; PDOStatement::closeCursor     — Closes the cursor, enabling the statement to be executed again
 ;; PDOStatement::errorCode       — Fetch the SQLSTATE associated with the last operation on the statement handle
 ;; PDOStatement::errorInfo       — Fetch extended error information associated with the last operation on the statement handle
