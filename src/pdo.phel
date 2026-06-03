@@ -32,13 +32,13 @@
   "Prepares a statement for execution and returns a statement object"
   [conn stmt & [options]]
   (statement
-    (php/-> (conn :pdo) (prepare stmt (phel->php (or options {}))))))
+   (php/-> (conn :pdo) (prepare stmt (phel->php (or options {}))))))
 
 (defn query
   "Prepares and executes an SQL statement without placeholders"
   [conn stmt & [fetch-mode]]
   (statement
-    (php/-> (conn :pdo) (query stmt (or fetch-mode \PDO/FETCH_ASSOC)))))
+   (php/-> (conn :pdo) (query stmt (or fetch-mode \PDO/FETCH_ASSOC)))))
 
 (defn ^bool begin
   "Initiates a transaction"
