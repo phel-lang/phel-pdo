@@ -41,6 +41,33 @@
   (pdo/set-attribute *conn* \PDO/ATTR_ERRMODE \PDO/ERRMODE_SILENT)
   (is (= \PDO/ERRMODE_SILENT (pdo/get-attribute *conn* \PDO/ATTR_ERRMODE))))
 
+(deftest from-connection-wraps-existing-pdo
+  (let [raw  (php/new \PDO "sqlite::memory:")
+        conn (pdo/from-connection raw)]
+    (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))")
+    (pdo/exec conn "insert into t1 (name) values ('phel')")
+    (is (= {:id 1 :name "phel"} (pdo/fetch (pdo/query conn "select * from t1 where id = 1"))))))
+
+(deftest from-connection-supports-transactions
+  (let [raw  (php/new \PDO "sqlite::memory:")
+        conn (pdo/from-connection raw)]
+    (pdo/exec conn "create table t1 (id integer, name varchar(10))")
+    (pdo/with-transaction conn
+                          (pdo/exec conn "insert into t1 values (1, 'phel')"))
+    (is (= 1 (pdo/fetch-column (pdo/query conn "select count(*) from t1"))))))
+
+(deftest from-connection-leaves-attributes-untouched-by-default
+  (let [raw (php/new \PDO "sqlite::memory:")]
+    (php/-> raw (setAttribute \PDO/ATTR_ERRMODE \PDO/ERRMODE_SILENT))
+    (let [conn (pdo/from-connection raw)]
+      (is (= \PDO/ERRMODE_SILENT (pdo/get-attribute conn \PDO/ATTR_ERRMODE))))))
+
+(deftest from-connection-apply-defaults-sets-errmode-exception
+  (let [raw (php/new \PDO "sqlite::memory:")]
+    (php/-> raw (setAttribute \PDO/ATTR_ERRMODE \PDO/ERRMODE_SILENT))
+    (let [conn (pdo/from-connection raw {:apply-defaults true})]
+      (is (= \PDO/ERRMODE_EXCEPTION (pdo/get-attribute conn \PDO/ATTR_ERRMODE))))))
+
 (deftest available-drivers-includes-sqlite
   (is (contains-value? (pdo/get-available-drivers *conn*) "sqlite")))
 

@@ -27,6 +27,17 @@
     (set-attribute conn \PDO/ATTR_ERRMODE \PDO/ERRMODE_EXCEPTION)
     conn))
 
+(defn from-connection
+  "Wraps an already-open \\PDO instance in a connection, reusing it as-is.
+  The host owns the connection's configuration and lifecycle; phel-pdo never
+  closes a connection it did not open. Pass {:apply-defaults true} to set
+  phel-pdo's ERRMODE_EXCEPTION default on the wrapped handle."
+  [pdo & [options]]
+  (let [conn (connection pdo)]
+    (when (get options :apply-defaults)
+      (set-attribute conn \PDO/ATTR_ERRMODE \PDO/ERRMODE_EXCEPTION))
+    conn))
+
 (defn ^int exec
   "Execute an SQL statement and return the number of affected rows"
   [conn stmt]

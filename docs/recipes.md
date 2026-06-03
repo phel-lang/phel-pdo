@@ -7,6 +7,29 @@ Common patterns. Every snippet assumes:
 (def conn (pdo/connect "sqlite::memory:"))
 ```
 
+## Reuse an existing (framework) connection
+
+Inside a PHP host (Symfony, Laravel) the app already has a configured, pooled
+connection. Hand its native `\PDO` to `from-connection` instead of opening a
+second one - Doctrine DBAL exposes it via `getNativeConnection()`:
+
+```clojure
+;; php-pdo is a \PDO passed in from the host framework
+(def conn (pdo/from-connection php-pdo))
+
+(-> (pdo/query conn "select * from products where id = 1")
+    (pdo/fetch))
+```
+
+`from-connection` reuses the handle as-is and leaves its attributes untouched -
+the host owns the connection's configuration, and phel-pdo never closes a
+connection it did not open. Pass `{:apply-defaults true}` to opt into
+phel-pdo's `ERRMODE_EXCEPTION`:
+
+```clojure
+(def conn (pdo/from-connection php-pdo {:apply-defaults true}))
+```
+
 ## Prepared statements
 
 Reuse a statement across many parameter sets:
