@@ -128,6 +128,13 @@
   (let [stmt (pdo/query *conn* "select * from t1")]
     (is (= 2 (pdo/column-count stmt)))))
 
+(deftest column-meta-returns-map
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select id, name from t1")
+        meta (pdo/column-meta stmt 1)]
+    (is (= "name" (meta :name)))
+    (is (= "t1" (meta :table)))))
+
 (deftest row-count-on-insert
   (create-t1 *conn*)
   (let [stmt (pdo/query *conn* "insert into t1 (name) values ('phel'), ('php')")]

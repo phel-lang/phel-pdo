@@ -64,6 +64,12 @@
   [stmt]
   (php/-> (stmt :stmt) (rowCount)))
 
+(defn column-meta
+  "Returns metadata for a 0-indexed column in the result set as a map, or nil if unavailable"
+  [stmt column]
+  (when-let [meta (php/-> (stmt :stmt) (getColumnMeta column))]
+    (row->map meta)))
+
 (defn bind-value
   "Binds a value to a parameter"
   [stmt column value & [type]]
@@ -88,6 +94,5 @@
 ;; Not implemented yet:
 ;;
 ;; PDOStatement::bindColumn      — Bind a column to a PHP variable
-;; PDOStatement::getColumnMeta   — Returns metadata for a column in a result set
 ;; PDOStatement::getIterator     — Gets result set iterator
 ;; PDOStatement::nextRowset      — Advances to the next rowset in a multi-rowset statement handle

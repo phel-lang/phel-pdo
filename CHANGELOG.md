@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pdo/close-cursor` - wrap `PDOStatement::closeCursor`; frees the cursor so the statement can be re-executed ([#9]).
 - `pdo/fetch-object` - wrap `PDOStatement::fetchObject`; returns the next row as an object (`stdClass` or a named class), or `nil` when exhausted ([#11]).
 - `pdo/set-fetch-mode` - wrap `PDOStatement::setFetchMode`; sets the statement's default fetch mode, with mode-specific extra args ([#13]).
+- `pdo/column-meta` - wrap `PDOStatement::getColumnMeta`; returns a 0-indexed column's metadata as a map, or `nil` when unavailable ([#15]).
 
 ### Changed
 
