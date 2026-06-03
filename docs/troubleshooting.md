@@ -18,7 +18,7 @@ Then install the matching extension (e.g. `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`
 
 You forgot to `(require phel.pdo)`. Everything - connection-side and statement-side - lives under that single namespace.
 
-If `require` itself fails, your `phel-lang` version may be too old. phel-pdo `>=0.1.0` needs phel-lang `^0.37`.
+If `require` itself fails, your `phel-lang` version may be too old. phel-pdo needs phel-lang `^0.41`.
 
 ## Bound integer matches as a string
 
@@ -48,8 +48,8 @@ If you want all rows up front, `pdo/fetch-all` returns a vector (empty when no r
 Rows go through `row->map`, so keys are keywords:
 
 ```clojure
-(pdo/fetch stmt) ; => {:id 1 :name "phel"}    ✓
-(pdo/fetch stmt) ; => {"id" 1 "name" "phel"}  ✗ - not what you get
+(pdo/fetch stmt) ; => {:id 1, :name "phel"}    ✓
+(pdo/fetch stmt) ; => {"id" 1, "name" "phel"}  ✗ - not what you get
 ```
 
 For `execute` params, keyword keys are fine - `phel->php` converts them to string keys for PDO:

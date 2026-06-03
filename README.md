@@ -8,7 +8,7 @@ PDO wrapper for [Phel](https://phel-lang.org). Talk to relational databases from
 composer require phel-lang/phel-pdo
 ```
 
-Requires PHP `>=8.4` and `phel-lang/phel-lang ^0.37`.
+Requires PHP `>=8.4` and `phel-lang/phel-lang ^0.41`.
 
 ## Quick start
 
@@ -22,13 +22,13 @@ Requires PHP `>=8.4` and `phel-lang/phel-lang ^0.37`.
 ;; Raw query
 (-> (pdo/query conn "select * from t1 where id = 1")
     (pdo/fetch))
-;; => {:id 1 :name "phel"}
+;; => {:id 1, :name "phel"}
 
 ;; Prepared statement
 (-> (pdo/prepare conn "select * from t1 where id = :id")
     (pdo/execute {:id 1})
     (pdo/fetch))
-;; => {:id 1 :name "phel"}
+;; => {:id 1, :name "phel"}
 
 ;; Insert a row from a map
 (pdo/insert conn :t1 {:name "lisp"})
@@ -39,27 +39,15 @@ Requires PHP `>=8.4` and `phel-lang/phel-lang ^0.37`.
 
 ## With phel-sql
 
-[phel-sql](https://github.com/phel-lang/phel-sql) is a data-driven SQL DSL (HoneySQL-style). It returns `[sql params]` from plain data - feed that straight into `pdo/prepare` + `pdo/execute`:
-
-```bash
-composer require phel-lang/phel-sql
-```
+[phel-sql](https://github.com/phel-lang/phel-sql) is an optional data-driven SQL DSL. It returns `[sql params]` you feed straight into `pdo/prepare` + `pdo/execute`:
 
 ```clojure
-(require phel.pdo)
-(require phel.sql :as sql)
-
-(let [[query params] (sql/format {:select [:id :name]
-                                  :from   [:users]
-                                  :where  [:= :id 1]})
-      conn           (pdo/connect "sqlite:database.db")]
+(let [[query params] (sql/format {:select [:id :name], :from [:users], :where [:= :id 1]})]
   (-> (pdo/prepare conn query)
       (pdo/execute params)
       (pdo/fetch)))
-;; => {:id 1 :name "phel"}
+;; => {:id 1, :name "phel"}
 ```
-
-phel-sql is optional - phel-pdo works with raw SQL strings on its own.
 
 ## API
 

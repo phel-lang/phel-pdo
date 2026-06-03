@@ -9,24 +9,16 @@ Common patterns. Every snippet assumes:
 
 ## Reuse an existing (framework) connection
 
-Inside a PHP host (Symfony, Laravel) the app already has a configured, pooled
-connection. Hand its native `\PDO` to `from-connection` instead of opening a
-second one - Doctrine DBAL exposes it via `getNativeConnection()`:
+Inside a PHP host (Symfony, Laravel) hand the app's native `\PDO` to
+`from-connection` instead of opening a second one (Doctrine DBAL exposes it via
+`getNativeConnection()`). The handle is reused as-is, attributes untouched, and
+phel-pdo never closes a connection it did not open:
 
 ```clojure
 ;; php-pdo is a \PDO passed in from the host framework
 (def conn (pdo/from-connection php-pdo))
 
-(-> (pdo/query conn "select * from products where id = 1")
-    (pdo/fetch))
-```
-
-`from-connection` reuses the handle as-is and leaves its attributes untouched -
-the host owns the connection's configuration, and phel-pdo never closes a
-connection it did not open. Pass `{:apply-defaults true}` to opt into
-phel-pdo's `ERRMODE_EXCEPTION`:
-
-```clojure
+;; pass {:apply-defaults true} to opt into phel-pdo's ERRMODE_EXCEPTION
 (def conn (pdo/from-connection php-pdo {:apply-defaults true}))
 ```
 
@@ -47,7 +39,7 @@ Reuse a statement across many parameter sets:
 (-> (pdo/prepare conn "select * from t1 where id = :id")
     (pdo/execute {:id 1})
     (pdo/fetch))
-;; => {:id 1 :name "phel"}
+;; => {:id 1, :name "phel"}
 ```
 
 > [!NOTE]
@@ -89,8 +81,8 @@ last body value) and rolls back + re-throws on any exception.
 
 ```clojure
 (pdo/with-transaction conn
-  (pdo/insert conn :accounts {:name "a" :balance 100})
-  (pdo/insert conn :accounts {:name "b" :balance 0}))
+  (pdo/insert conn :accounts {:name "a", :balance 100})
+  (pdo/insert conn :accounts {:name "b", :balance 0}))
 ```
 
 If `conn` is already in a transaction, the body runs inline - no nested
@@ -119,8 +111,8 @@ Check state with `(pdo/in-transaction conn)`.
 ```
 
 Returns a `string` (as PDO reports it) - lossless for big integers and named
-sequences; coerce with `php/intval` when you need a number. On PostgreSQL pass the
-sequence name to raw PDO (not yet wrapped - drop into `(php/-> (conn :pdo) (lastInsertId "seq"))` for now).
+sequences; `php/intval` it when you need a number. On PostgreSQL pass the
+sequence name to raw PDO: `(php/-> (conn :pdo) (lastInsertId "seq"))`.
 
 ## Quoting
 
@@ -182,7 +174,7 @@ Returns a Phel vector - `contains-value?` works directly.
   (-> (pdo/prepare conn query)
       (pdo/execute params)
       (pdo/fetch)))
-;; => {:id 1 :name "phel"}
+;; => {:id 1, :name "phel"}
 ```
 
 phel-pdo + phel-sql is the recommended combo when you'd otherwise build SQL strings by hand.

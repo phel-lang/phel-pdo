@@ -9,31 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `pdo/insert` - build an `INSERT` from a map (`(pdo/insert conn :table {:col v ...})`), execute it as a prepared statement, and return the new `last-insert-id`. Identifiers must match `[A-Za-z_][A-Za-z0-9_]*` ([#4]).
-- `pdo/bind-param` - wrap `PDOStatement::bindParam`; binds a parameter applied at execution time ([#8]).
-- `pdo/close-cursor` - wrap `PDOStatement::closeCursor`; frees the cursor so the statement can be re-executed ([#9]).
-- `pdo/fetch-object` - wrap `PDOStatement::fetchObject`; returns the next row as an object (`stdClass` or a named class), or `nil` when exhausted ([#11]).
-- `pdo/set-fetch-mode` - wrap `PDOStatement::setFetchMode`; sets the statement's default fetch mode, with mode-specific extra args ([#13]).
-- `pdo/column-meta` - wrap `PDOStatement::getColumnMeta`; returns a 0-indexed column's metadata as a map, or `nil` when unavailable ([#15]).
-- `pdo/statement-seq` - expose a statement's rows as a lazy seq of maps (the Phel-idiomatic take on `PDOStatement::getIterator`), so callers can `map`/`reduce`/`take` without materialising the whole result set ([#16]).
-- `pdo/next-rowset` - wrap `PDOStatement::nextRowset`; advances a multi-rowset statement (e.g. stored procedures on MySQL/Postgres) ([#17]).
-- `pdo/with-transaction` macro - runs a body in a transaction, committing on success (returning the last body value) and rolling back + re-throwing on error; runs inline when already in a transaction ([#20]).
-- `pdo/from-connection` - wrap an already-open `\PDO` (e.g. a Symfony/Doctrine DBAL connection) as a phel-pdo connection, reusing the host's handle as-is; `{:apply-defaults true}` opts into `ERRMODE_EXCEPTION` ([#21]).
+- `pdo/insert` - build an `INSERT` from a map and return the new `last-insert-id`; identifiers must match `[A-Za-z_][A-Za-z0-9_]*` ([#4]).
+- `pdo/bind-param` - bind a parameter applied at execution time ([#8]).
+- `pdo/close-cursor` - free the cursor so the statement can be re-executed ([#9]).
+- `pdo/fetch-object` - next row as an object (`stdClass` or a named class), or `nil` when exhausted ([#11]).
+- `pdo/set-fetch-mode` - set the statement's default fetch mode, with mode-specific extra args ([#13]).
+- `pdo/column-meta` - a 0-indexed column's metadata as a map, or `nil` when unavailable ([#15]).
+- `pdo/statement-seq` - the remaining rows as a lazy seq of maps, so callers can `map`/`reduce`/`take` without materialising the whole result set ([#16]).
+- `pdo/next-rowset` - advance a multi-rowset statement (e.g. stored procedures) ([#17]).
+- `pdo/with-transaction` macro - run a body in a transaction (commit + return last value, or rollback + re-throw); runs inline when already in a transaction ([#20]).
+- `pdo/from-connection` - wrap an already-open `\PDO` (e.g. a framework/DBAL connection) as-is; `{:apply-defaults true}` opts into `ERRMODE_EXCEPTION` ([#21]).
 
 ### Changed
 
-- `pdo/get-attribute` / `pdo/set-attribute` now dispatch on the handle: pass a connection (as before) or a statement to reach `PDOStatement::getAttribute` / `setAttribute` ([#12]).
-- `pdo/error-code` / `pdo/error-info` now dispatch on the handle: pass a statement to read `PDOStatement::errorCode` / `errorInfo` ([#14]).
-- **BC** `pdo/error-code` now returns the SQLSTATE **string** (e.g. `"23000"`, `"HY000"`) instead of an int, and `pdo/error-info`'s first element is likewise the SQLSTATE string (the `driver-code` second element stays an int). SQLSTATE is a 5-character code; the old `intval` corrupted non-numeric states like `HY000` (→ `0`) and `42S02` (→ `42`).
-- **BC** `pdo/last-insert-id` and `pdo/insert` now return the id as a **string** (as PDO reports it) instead of coercing to int. This is lossless for big integers and PostgreSQL named sequences; call `php/intval` at the call site if you need a number.
-- **BC** `pdo/get-available-drivers` no longer takes a connection argument - `PDO::getAvailableDrivers` is static. Call `(pdo/get-available-drivers)`.
+- `pdo/get-attribute` / `pdo/set-attribute` now accept a connection **or** a statement handle ([#12]).
+- `pdo/error-code` / `pdo/error-info` now accept a connection **or** a statement handle ([#14]).
+- **BC** `pdo/error-code` returns the SQLSTATE **string** (e.g. `"HY000"`), and `pdo/error-info`'s first element is likewise a string (`driver-code` stays an int). The old `intval` corrupted non-numeric states like `HY000` (→ `0`).
+- **BC** `pdo/last-insert-id` and `pdo/insert` return the id as a **string** (as PDO reports it); lossless for big integers and named sequences. `php/intval` it if you need a number.
+- **BC** `pdo/get-available-drivers` takes no connection argument - it is static. Call `(pdo/get-available-drivers)`.
 
 ### Fixed
 
-- `pdo/connect` and `pdo/prepare` now convert a Phel options map (with integer `\PDO/ATTR_*` keys) into a PHP array; previously passing an options map raised a `TypeError` because `phel->php` cannot convert integer map keys.
-- `pdo/bind-value` / `pdo/bind-param` now keep an integer `column` as a 1-based positional index instead of stringifying it, fixing positional (`?`) parameter binding.
-- `pdo/insert` now rejects an empty `row` map with an `InvalidArgumentException` instead of generating invalid SQL.
-- `pdo/set-fetch-mode` now throws an `InvalidArgumentException` on unsupported arity (more than 2 extra args) instead of silently doing nothing.
+- `pdo/connect` / `pdo/prepare` now accept an options map with integer `\PDO/ATTR_*` keys (previously raised a `TypeError`).
+- `pdo/bind-value` / `pdo/bind-param` now keep an integer `column` as a 1-based positional index, fixing positional (`?`) binding.
+- `pdo/insert` rejects an empty `row` map with an `InvalidArgumentException` instead of generating invalid SQL.
+- `pdo/set-fetch-mode` throws an `InvalidArgumentException` on too many extra args instead of silently doing nothing.
 
 ## [0.1.0] - 2026-05-13
 

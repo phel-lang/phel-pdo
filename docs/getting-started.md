@@ -4,7 +4,7 @@
 
 - PHP `>=8.4` with the PDO extension and the driver you target (`pdo_sqlite`, `pdo_mysql`, `pdo_pgsql`, …).
 - [Composer](https://getcomposer.org/).
-- [Phel](https://phel-lang.org) `^0.37` (pulled in transitively).
+- [Phel](https://phel-lang.org) `^0.41` (pulled in transitively).
 
 Check your PDO drivers:
 
@@ -29,7 +29,7 @@ composer require phel-lang/phel-pdo
 
 (-> (pdo/query conn "select * from t1")
     (pdo/fetch-all))
-;; => [{:id 1 :name "phel"} {:id 2 :name "php"}]
+;; => [{:id 1, :name "phel"} {:id 2, :name "php"}]
 ```
 
 That's the whole mental model:

@@ -55,7 +55,7 @@
         conn (pdo/from-connection raw)]
     (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))")
     (pdo/exec conn "insert into t1 (name) values ('phel')")
-    (is (= {:id 1 :name "phel"} (pdo/fetch (pdo/query conn "select * from t1 where id = 1"))))))
+    (is (= {:id 1, :name "phel"} (pdo/fetch (pdo/query conn "select * from t1 where id = 1"))))))
 
 (deftest from-connection-supports-transactions
   (let [raw  (php/new \PDO "sqlite::memory:")
@@ -164,7 +164,7 @@
 (deftest query-fetch-returns-row-as-map
   (seed-t1 *conn*)
   (let [stmt (pdo/query *conn* "select * from t1 where id = 1")]
-    (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
+    (is (= {:id 1, :name "phel"} (pdo/fetch stmt)))))
 
 (deftest fetch-returns-nil-when-no-rows
   (seed-t1 *conn*)
@@ -176,7 +176,7 @@
   (insert-name *conn* "phel")
   (insert-name *conn* "php")
   (let [stmt (pdo/query *conn* "select * from t1")]
-    (is (= [{:id 1 :name "phel"} {:id 2 :name "php"}] (pdo/fetch-all stmt)))))
+    (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}] (pdo/fetch-all stmt)))))
 
 (deftest fetch-object-returns-stdclass-row
   (seed-t1 *conn*)
@@ -195,7 +195,7 @@
   (insert-name *conn* "phel")
   (insert-name *conn* "php")
   (let [stmt (pdo/query *conn* "select * from t1")]
-    (is (= [{:id 1 :name "phel"} {:id 2 :name "php"}]
+    (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}]
            (into [] (pdo/statement-seq stmt))))))
 
 (deftest statement-seq-empty-result-is-empty-seq
@@ -208,7 +208,7 @@
   (insert-name *conn* "phel")
   (insert-name *conn* "php")
   (let [stmt (pdo/query *conn* "select * from t1")]
-    (is (= {:id 1 :name "phel"} (first (pdo/statement-seq stmt))))))
+    (is (= {:id 1, :name "phel"} (first (pdo/statement-seq stmt))))))
 
 (deftest column-count-on-select
   (seed-t1 *conn*)
@@ -243,17 +243,17 @@
            (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
                  stmt (pdo/bind-value stmt :id 1)
                  stmt (pdo/execute stmt)]
-             (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
+             (is (= {:id 1, :name "phel"} (pdo/fetch stmt)))))
   (testing "explicit int type"
            (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
                  stmt (pdo/bind-value stmt :id 1 \PDO/PARAM_INT)
                  stmt (pdo/execute stmt)]
-             (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
+             (is (= {:id 1, :name "phel"} (pdo/fetch stmt)))))
   (testing "explicit string type"
            (let [stmt (pdo/prepare *conn* "select * from t1 where name = :name")
                  stmt (pdo/bind-value stmt :name "phel" \PDO/PARAM_STR)
                  stmt (pdo/execute stmt)]
-             (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))))
+             (is (= {:id 1, :name "phel"} (pdo/fetch stmt))))))
 
 (deftest bind-param
   (seed-t1 *conn*)
@@ -261,12 +261,12 @@
            (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
                  stmt (pdo/bind-param stmt :id 1)
                  stmt (pdo/execute stmt)]
-             (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
+             (is (= {:id 1, :name "phel"} (pdo/fetch stmt)))))
   (testing "explicit int type"
            (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
                  stmt (pdo/bind-param stmt :id 1 \PDO/PARAM_INT)
                  stmt (pdo/execute stmt)]
-             (is (= {:id 1 :name "phel"} (pdo/fetch stmt))))))
+             (is (= {:id 1, :name "phel"} (pdo/fetch stmt))))))
 
 (deftest bind-value-by-positional-index
   (seed-t1 *conn*)
@@ -274,7 +274,7 @@
   (let [stmt (pdo/prepare *conn* "select * from t1 where id = ?")
         stmt (pdo/bind-value stmt 1 1 \PDO/PARAM_INT)
         stmt (pdo/execute stmt)]
-    (is (= {:id 1 :name "phel"} (pdo/fetch stmt)))))
+    (is (= {:id 1, :name "phel"} (pdo/fetch stmt)))))
 
 (deftest close-cursor-allows-re-execution
   (seed-t1 *conn*)
@@ -370,7 +370,7 @@
 (deftest insert-persists-row
   (create-t1 *conn*)
   (pdo/insert *conn* :t1 {:name "phel"})
-  (is (= {:id 1 :name "phel"}
+  (is (= {:id 1, :name "phel"}
          (pdo/fetch (pdo/query *conn* "select * from t1 where id = 1")))))
 
 (deftest insert-accepts-string-table
