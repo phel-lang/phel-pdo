@@ -93,6 +93,7 @@ Returned by `pdo/query` and `pdo/prepare`.
 | `fetch` | `(fetch stmt)` | Next row as a map, or `nil` if exhausted. |
 | `fetch-all` | `(fetch-all stmt)` | Remaining rows as a vector of maps. |
 | `fetch-column` | `(fetch-column stmt & [column])` | Single column from the next row. |
+| `fetch-object` | `(fetch-object stmt & [class-name ctor-args])` | Next row as an object (`stdClass` by default, or an instance of `class-name`), or `nil` if exhausted. |
 | `bind-value` | `(bind-value stmt column value & [type])` | Bind a value to a placeholder. Returns the statement. |
 | `bind-param` | `(bind-param stmt column value & [type])` | Bind a parameter, applied at execution time. Returns the statement. |
 | `column-count` | `(column-count stmt)` | Number of columns in the result set. |

@@ -111,6 +111,18 @@
   (let [stmt (pdo/query *conn* "select * from t1")]
     (is (= [{:id 1 :name "phel"} {:id 2 :name "php"}] (pdo/fetch-all stmt)))))
 
+(deftest fetch-object-returns-stdclass-row
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select * from t1 where id = 1")
+        obj  (pdo/fetch-object stmt)]
+    (is (= "stdClass" (php/get_class obj)))
+    (is (= "phel" (php/-> obj name)))))
+
+(deftest fetch-object-returns-nil-when-no-rows
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select * from t1 where id = 999")]
+    (is (nil? (pdo/fetch-object stmt)))))
+
 (deftest column-count-on-select
   (seed-t1 *conn*)
   (let [stmt (pdo/query *conn* "select * from t1")]
