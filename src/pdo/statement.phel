@@ -21,6 +21,14 @@
   [stmt]
   (map row->map (php/-> (stmt :stmt) (fetchAll \PDO/FETCH_ASSOC))))
 
+(defn fetch-object
+  "Fetches the next row as an object (stdClass by default, or an instance of class-name), or nil if no more rows"
+  [stmt & [class-name ctor-args]]
+  (when-let [obj (php/-> (stmt :stmt)
+                         (fetchObject (or class-name "stdClass")
+                                      (phel->php (or ctor-args []))))]
+    obj))
+
 (defn execute
   "Executes a prepared statement"
   [stmt & [params]]
@@ -71,7 +79,6 @@
 ;; PDOStatement::bindColumn      — Bind a column to a PHP variable
 ;; PDOStatement::errorCode       — Fetch the SQLSTATE associated with the last operation on the statement handle
 ;; PDOStatement::errorInfo       — Fetch extended error information associated with the last operation on the statement handle
-;; PDOStatement::fetchObject     — Fetches the next row and returns it as an object
 ;; PDOStatement::getAttribute    — Retrieve a statement attribute
 ;; PDOStatement::getColumnMeta   — Returns metadata for a column in a result set
 ;; PDOStatement::getIterator     — Gets result set iterator
