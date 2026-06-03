@@ -90,6 +90,37 @@
   (pdo/rollback *conn*)
   (is (= 0 (pdo/fetch-column (pdo/query *conn* "select count(*) from t1")))))
 
+(deftest with-transaction-commits-and-returns-last-value
+  (create-t1 *conn*)
+  (let [ret (pdo/with-transaction *conn*
+                                  (insert-name *conn* "phel")
+                                  :done)]
+    (is (= :done ret))
+    (is (= 1 (pdo/fetch-column (pdo/query *conn* "select count(*) from t1"))))))
+
+(deftest with-transaction-rolls-back-and-rethrows-on-error
+  (create-t1 *conn*)
+  (let [threw (try
+                (pdo/with-transaction *conn*
+                                      (insert-name *conn* "phel")
+                                      (throw (php/new \Exception "boom")))
+                false
+                (catch \Exception _e true))]
+    (is (= true threw))
+    (is (= 0 (pdo/fetch-column (pdo/query *conn* "select count(*) from t1"))))))
+
+(deftest with-transaction-nested-runs-inline
+  (create-t1 *conn*)
+  (pdo/begin *conn*)
+  ;; already in a transaction: the inner call must not begin/commit again
+  (pdo/with-transaction *conn*
+                        (insert-name *conn* "phel"))
+  (testing "inner call left the outer transaction open"
+           (is (= true (pdo/in-transaction *conn*))))
+  (pdo/rollback *conn*)
+  (testing "outer rollback still reverts the inline insert"
+           (is (= 0 (pdo/fetch-column (pdo/query *conn* "select count(*) from t1"))))))
+
 ;; -----
 ;; Query
 ;; -----

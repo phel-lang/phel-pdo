@@ -61,6 +61,20 @@ Available types: `\PDO/PARAM_STR` (default), `\PDO/PARAM_INT`, `\PDO/PARAM_BOOL`
 
 ## Transactions
 
+Use `with-transaction` to bracket a body: it commits on success (returning the
+last body value) and rolls back + re-throws on any exception.
+
+```clojure
+(pdo/with-transaction conn
+  (pdo/insert conn :accounts {:name "a" :balance 100})
+  (pdo/insert conn :accounts {:name "b" :balance 0}))
+```
+
+If `conn` is already in a transaction, the body runs inline - no nested
+`begin`/`commit` (v1 uses no savepoints).
+
+The manual primitives remain available when you need finer control:
+
 ```clojure
 (pdo/begin conn)
 (try
