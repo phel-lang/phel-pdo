@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pdo/statement-seq` - expose a statement's rows as a lazy seq of maps (the Phel-idiomatic take on `PDOStatement::getIterator`), so callers can `map`/`reduce`/`take` without materialising the whole result set ([#16]).
 - `pdo/next-rowset` - wrap `PDOStatement::nextRowset`; advances a multi-rowset statement (e.g. stored procedures on MySQL/Postgres) ([#17]).
 - `pdo/with-transaction` macro - runs a body in a transaction, committing on success (returning the last body value) and rolling back + re-throwing on error; runs inline when already in a transaction ([#20]).
+- `pdo/from-connection` - wrap an already-open `\PDO` (e.g. a Symfony/Doctrine DBAL connection) as a phel-pdo connection, reusing the host's handle as-is; `{:apply-defaults true}` opts into `ERRMODE_EXCEPTION` ([#21]).
 
 ### Changed
 

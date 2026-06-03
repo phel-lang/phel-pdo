@@ -70,6 +70,7 @@ All functions live in the `phel.pdo` namespace.
 | Function | Signature | Description |
 |---|---|---|
 | `connect` | `(connect dsn & [username password options])` | Open a connection. Throws `PDOException` on failure. Sets `ERRMODE_EXCEPTION` by default. |
+| `from-connection` | `(from-connection pdo & [options])` | Wrap an already-open `\PDO` (e.g. a framework/DBAL connection) as-is. `{:apply-defaults true}` sets `ERRMODE_EXCEPTION`. |
 | `exec` | `(exec conn sql)` | Execute SQL, return number of affected rows. |
 | `query` | `(query conn sql & [fetch-mode])` | Run SQL without placeholders, return a statement. |
 | `prepare` | `(prepare conn sql & [options])` | Prepare a statement for later `execute`. |
