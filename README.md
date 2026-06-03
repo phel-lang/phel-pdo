@@ -98,6 +98,7 @@ Returned by `pdo/query` and `pdo/prepare`.
 | `bind-param` | `(bind-param stmt column value & [type])` | Bind a parameter, applied at execution time. Returns the statement. |
 | `column-count` | `(column-count stmt)` | Number of columns in the result set. |
 | `row-count` | `(row-count stmt)` | Rows affected by the last DML. |
+| `column-meta` | `(column-meta stmt column)` | Metadata map for a 0-indexed column, or `nil` if unavailable. |
 | `close-cursor` | `(close-cursor stmt)` | Free the cursor so the statement can be re-executed. Returns the statement. |
 | `set-fetch-mode` | `(set-fetch-mode stmt mode & args)` | Set the statement's default fetch mode (extra args match the mode). Returns the statement. |
 | `debug-dump-params` | `(debug-dump-params stmt)` | Dump prepared statement info as a string. |
