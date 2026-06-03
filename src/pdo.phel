@@ -4,20 +4,20 @@
 
 (declare statement?)
 
-(defn- attr-target
-  "The PDO handle behind a connection or statement struct."
+(defn- handle-target
+  "The raw PDO handle behind a connection or statement struct."
   [handle]
   (if (statement? handle) (handle :stmt) (handle :pdo)))
 
 (defn ^bool set-attribute
   "Set an attribute on a connection or statement"
   [handle attribute value]
-  (php/-> (attr-target handle) (setAttribute attribute value)))
+  (php/-> (handle-target handle) (setAttribute attribute value)))
 
 (defn get-attribute
   "Retrieve an attribute from a connection or statement"
   [handle attribute]
-  (php/-> (attr-target handle) (getAttribute attribute)))
+  (php/-> (handle-target handle) (getAttribute attribute)))
 
 (defn connect
   "Connect database and return connection object.
@@ -93,15 +93,15 @@
     (last-insert-id conn)))
 
 (defn ^int error-code
-  "Fetch the SQLSTATE associated with the last operation on the database handle"
-  [conn]
-  (php/intval (php/-> (conn :pdo) (errorCode))))
+  "Fetch the SQLSTATE associated with the last operation on a connection or statement"
+  [handle]
+  (php/intval (php/-> (handle-target handle) (errorCode))))
 
 (defn error-info
-  "Fetch extended error information associated with the last operation on the database handle"
-  [conn]
+  "Fetch extended error information associated with the last operation on a connection or statement"
+  [handle]
   (let [[sqlstate driver-code driver-message]
-        (values (php->phel (php/-> (conn :pdo) (errorInfo))))]
+        (values (php->phel (php/-> (handle-target handle) (errorInfo))))]
     [(php/intval sqlstate) (php/intval driver-code) driver-message]))
 
 (defn ^bool in-transaction

@@ -296,3 +296,19 @@
     (pdo/exec *conn* "insert into t1 (id, name) values (1, 'php')")
     (catch \PDOException _e nil))
   (is (= [23000 19 "UNIQUE constraint failed: t1.id"] (pdo/error-info *conn*))))
+
+(deftest statement-error-code-on-constraint-violation
+  (seed-t1 *conn*)
+  (let [stmt (pdo/prepare *conn* "insert into t1 (id, name) values (1, 'php')")]
+    (try
+      (pdo/execute stmt)
+      (catch \PDOException _e nil))
+    (is (= 23000 (pdo/error-code stmt)))))
+
+(deftest statement-error-info-on-constraint-violation
+  (seed-t1 *conn*)
+  (let [stmt (pdo/prepare *conn* "insert into t1 (id, name) values (1, 'php')")]
+    (try
+      (pdo/execute stmt)
+      (catch \PDOException _e nil))
+    (is (= [23000 19 "UNIQUE constraint failed: t1.id"] (pdo/error-info stmt)))))
