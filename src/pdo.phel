@@ -109,6 +109,24 @@
   [conn]
   (php/-> (conn :pdo) (inTransaction)))
 
+(defmacro with-transaction
+  "Runs body inside a transaction on conn: commits on success and returns the last
+  body value, or rolls back and re-throws on error. If conn is already in a
+  transaction, runs body inline without a nested begin/commit."
+  [conn & body]
+  `(let [conn# ~conn]
+     (if (in-transaction conn#)
+       (do ~@body)
+       (do
+         (begin conn#)
+         (try
+           (let [result# (do ~@body)]
+             (commit conn#)
+             result#)
+           (catch \Throwable e#
+             (rollback conn#)
+             (throw e#)))))))
+
 (defn get-available-drivers
   "Return an array of available PDO drivers"
   [conn]
