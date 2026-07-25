@@ -76,6 +76,13 @@ uniqueness across sibling blocks in a loop, which `php/uniqid` would not.
 
 The counter is private, is never read by callers, and never takes caller input.
 
+The connection's `state` atom also holds a small bounded cache of prepared
+statements, used **only** by `insert` / `update` / `delete` / `insert-many`. Those
+own their statement for the whole of its life - prepared, executed, read,
+discarded - so reuse is safe. `prepare` is not cached: it hands the statement to
+the caller, and two live users of one statement would silently share a cursor.
+No opt-in flag can prevent that, so the general cache is not offered.
+
 ## Boundary crossings
 
 The only places PHP data and Phel data meet:
