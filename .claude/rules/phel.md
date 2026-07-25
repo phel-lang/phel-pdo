@@ -35,6 +35,11 @@ Return-type tags (`^bool`, `^int`, `^string`) reflect the underlying PDO return 
 
 `src/pdo.phel` ends with `(load "pdo/statement")`. New cross-file decls go via `declare` in `src/pdo.phel` before the `load`.
 
+**Every `defstruct` goes in `src/pdo.phel`, never in a `(load ...)`-ed file.** The
+loaded file compiles to a cache entry with no PHP `namespace` declaration, so a
+struct declared there lands in the global namespace while call sites use the
+qualified name - the class is then "not found" on any run that hits the cache.
+
 ## Tests (`tests/pdo_test.phel`)
 
 ```phel

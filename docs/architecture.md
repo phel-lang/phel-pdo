@@ -21,6 +21,14 @@ src/pdo/statement.phel    (in-ns phel.pdo)     statement-side wrappers
 (defstruct statement  [stmt bindings])     ; wraps \PDOStatement
 ```
 
+> [!IMPORTANT]
+> **Both** structs are declared in `src/pdo.phel`, even though `statement`'s
+> functions live in `src/pdo/statement.phel`. A file pulled in with `(load ...)`
+> compiles to its own cache entry that carries no PHP `namespace` declaration, so
+> a `defstruct` there lands in the global namespace while every call site
+> references the qualified name - `Class "phel\pdo\statement" not found` on the
+> second run. Keep new `defstruct` forms in `src/pdo.phel`.
+
 - `owned` - `true` for a connection `connect` opened, `false` for one
   `from-connection` borrowed. `close` never disturbs a borrowed handle.
 - `state` - an atom holding `{:closed bool}`. It has to be an atom rather than a

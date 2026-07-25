@@ -1,7 +1,5 @@
 (in-ns phel.pdo)
 
-(defstruct statement [stmt bindings])
-
 (defn- stmt-handle
   "The raw \\PDOStatement behind a statement struct, for the statement-only wrappers."
   [stmt]

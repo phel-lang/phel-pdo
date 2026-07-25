@@ -2,7 +2,12 @@
 
 (defstruct connection [pdo owned state])
 
-(declare statement?)
+;; statement's functions live in src/pdo/statement.phel, but the struct itself is
+;; declared here on purpose. A (load ...)-ed file compiles to its own cache entry
+;; with no PHP `namespace` line, so a defstruct there lands in the global
+;; namespace while call sites reference the qualified name - see #56.
+(defstruct statement [stmt bindings])
+
 
 (defn- bad-handle
   "Raises a caller-facing error for a value that is not the expected phel-pdo handle."
@@ -81,7 +86,6 @@
   [conn stmt]
   (php/-> (conn-pdo conn) (exec stmt)))
 
-(declare statement)
 (declare execute)
 
 (defn prepare
