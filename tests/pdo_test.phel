@@ -305,6 +305,103 @@
   (let [stmt (pdo/query *conn* "select * from t1")]
     (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}] (pdo/fetch-all stmt)))))
 
+;; -------------
+;; CRUD builders
+;; -------------
+
+(deftest update-sets-and-returns-affected-count
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (is (= 1 (pdo/update *conn* :t1 {:name "lisp"} {:id 1})))
+  (is (= [{:id 1, :name "lisp"} {:id 2, :name "php"}]
+         (pdo/select *conn* "select * from t1 order by id"))))
+
+(deftest update-affects-every-matching-row
+  (create-t1 *conn*)
+  (insert-name *conn* "same")
+  (insert-name *conn* "same")
+  (is (= 2 (pdo/update *conn* :t1 {:name "other"} {:name "same"}))))
+
+(deftest update-handles-the-same-column-in-set-and-where
+  ;; The naive builder emits :id twice for two different values.
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (is (= 1 (pdo/update *conn* :t1 {:id 99} {:id 1})))
+  (is (= [{:id 99, :name "phel"}] (pdo/select *conn* "select * from t1"))))
+
+(deftest update-binds-values-safely
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (pdo/update *conn* :t1 {:name "'; drop table t1; --"} {:id 1})
+  (is (= "'; drop table t1; --" (pdo/select-value *conn* "select name from t1"))))
+
+(deftest update-rejects-empty-set-or-where
+  (create-t1 *conn*)
+  (testing "an unqualified UPDATE would rewrite the whole table"
+           (is (= "InvalidArgumentException"
+                  (caught-class (fn [] (pdo/update *conn* :t1 {:name "x"} {})))))
+           (is (= "InvalidArgumentException"
+                  (caught-class (fn [] (pdo/update *conn* :t1 {} {:id 1})))))))
+
+(deftest update-rejects-bad-identifiers
+  (create-t1 *conn*)
+  (is (= "InvalidArgumentException"
+         (caught-class (fn [] (pdo/update *conn* "t1; drop table t1" {:name "x"} {:id 1})))))
+  (is (= "InvalidArgumentException"
+         (caught-class (fn [] (pdo/update *conn* :t1 {"name = 1; --" "x"} {:id 1})))))
+  (is (= "InvalidArgumentException"
+         (caught-class (fn [] (pdo/update *conn* :t1 {:name "x"} {"id = 1 or 1" 1}))))))
+
+(deftest delete-removes-and-returns-affected-count
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (is (= 1 (pdo/delete *conn* :t1 {:id 1})))
+  (is (= [{:id 2, :name "php"}] (pdo/select *conn* "select * from t1"))))
+
+(deftest delete-matches-on-several-columns
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (is (= 0 (pdo/delete *conn* :t1 {:id 1, :name "nope"})))
+  (is (= 1 (pdo/delete *conn* :t1 {:id 1, :name "phel"}))))
+
+(deftest delete-rejects-empty-where
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (testing "an unqualified DELETE would empty the table"
+           (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/delete *conn* :t1 {}))))))
+  (is (= 1 (pdo/select-value *conn* "select count(*) from t1"))))
+
+(deftest insert-many-inserts-every-row
+  (create-t1 *conn*)
+  (is (= 3 (pdo/insert-many *conn* :t1 [{:name "a"} {:name "b"} {:name "c"}])))
+  (is (= [{:name "a"} {:name "b"} {:name "c"}]
+         (pdo/select *conn* "select name from t1 order by id"))))
+
+(deftest insert-many-uses-one-statement
+  (create-t1 *conn*)
+  ;; row-count reports the rows affected by the *last* statement. A loop of single
+  ;; inserts would report 1; only one multi-VALUES statement can report 4.
+  (is (= 4 (pdo/insert-many *conn* :t1 [{:name "a"} {:name "b"} {:name "c"} {:name "d"}]))))
+
+(deftest insert-many-binds-values-safely
+  (create-t1 *conn*)
+  (pdo/insert-many *conn* :t1 [{:name "'; drop table t1; --"}])
+  (is (= "'; drop table t1; --" (pdo/select-value *conn* "select name from t1"))))
+
+(deftest insert-many-rejects-empty-and-mismatched-rows
+  (create-t1 *conn*)
+  (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/insert-many *conn* :t1 [])))))
+  (testing "rows without one shared column list have no single INSERT"
+           (is (= "InvalidArgumentException"
+                  (caught-class (fn [] (pdo/insert-many *conn* :t1 [{:name "a"} {:id 2}])))))))
+
+(deftest insert-many-handles-multi-column-rows
+  (pdo/exec *conn* "create table t2 (a, b)")
+  (is (= 2 (pdo/insert-many *conn* :t2 [{:a 1, :b "x"} {:a 2, :b "y"}])))
+  (is (= [{:a 1, :b "x"} {:a 2, :b "y"}] (pdo/select *conn* "select a, b from t2"))))
+
 ;; ---------------
 ;; One-shot reads
 ;; ---------------

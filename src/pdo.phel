@@ -182,6 +182,83 @@
     (close-cursor stmt)
     value))
 
+(declare row-count)
+
+(defn- ident-names
+  "Checked identifier names for a map's keys, in insertion order."
+  [m]
+  (into [] (for [k :in (keys m)] (check-ident (name k)))))
+
+(defn- prefix-keys
+  "Re-keys a map so its placeholders cannot collide with another clause's."
+  [prefix m]
+  (into {} (for [[k v] :pairs m] [(keyword (str prefix (name k))) v])))
+
+(defn- assignments
+  "`col = :prefixcol` for each column, joined with sep."
+  [sep prefix cols]
+  (php/implode sep (phel->php (into [] (for [c :in cols] (str c " = :" prefix c))))))
+
+(defn- require-non-empty [m what]
+  (when (empty? m)
+    (throw (php/new \InvalidArgumentException (str what " must not be empty")))))
+
+(defn ^int update
+  "Updates table, setting the columns of set-map on the rows matched by where-map,
+  and returns the affected row count. Table and column names must be plain
+  identifiers; every value is bound as a parameter. Both maps must be non-empty -
+  an unqualified UPDATE would rewrite the whole table, which is never what a
+  missing where clause meant"
+  [conn table set-map where-map]
+  (require-non-empty set-map "update set map")
+  (require-non-empty where-map "update where map")
+  (let [tbl    (check-ident (name table))
+        sql    (str "UPDATE " tbl
+                    " SET " (assignments ", " "set_" (ident-names set-map))
+                    " WHERE " (assignments " AND " "where_" (ident-names where-map)))
+        params (merge (prefix-keys "set_" set-map)
+                      (prefix-keys "where_" where-map))]
+    (-> (prepare conn sql) (execute params) (row-count))))
+
+(defn ^int delete
+  "Deletes the rows of table matched by where-map and returns the affected row count.
+  where-map must be non-empty - an unqualified DELETE would empty the table"
+  [conn table where-map]
+  (require-non-empty where-map "delete where map")
+  (let [tbl (check-ident (name table))
+        sql (str "DELETE FROM " tbl
+                 " WHERE " (assignments " AND " "where_" (ident-names where-map)))]
+    (-> (prepare conn sql) (execute (prefix-keys "where_" where-map)) (row-count))))
+
+(defn ^int insert-many
+  "Inserts rows - a seq of maps that all share one set of keys - into table with a
+  single multi-VALUES statement, and returns the affected row count.
+
+  Unlike insert it does not return an id: for a multi-row insert that is
+  driver-specific (MySQL reports the first, SQLite the last) and this wrapper will
+  not paper over the difference.
+
+  The statement carries rows x columns placeholders, and drivers cap that
+  (SQLITE_MAX_VARIABLE_NUMBER, MySQL's max_prepared_stmt_count). Chunk very large
+  batches at the call site rather than relying on the driver to cope"
+  [conn table rows]
+  (let [rows (into [] rows)]
+    (require-non-empty rows "insert-many rows")
+    (let [ks      (into [] (keys (first rows)))
+          cols    (into [] (for [k :in ks] (check-ident (name k))))
+          key-set (fn [m] (sort (into [] (for [k :in (keys m)] (name k)))))
+          shape   (key-set (first rows))]
+      (dofor [r :in rows]
+        (when-not (= shape (key-set r))
+          (throw (php/new \InvalidArgumentException
+                          "insert-many rows must all have the same keys"))))
+      (let [holes  (str "(" (join-csv (for [_ :in cols] "?")) ")")
+            sql    (str "INSERT INTO " (check-ident (name table))
+                        " (" (join-csv cols) ")"
+                        " VALUES " (join-csv (for [_ :in rows] holes)))
+            params (into [] (mapcat (fn [r] (for [k :in ks] (get r k))) rows))]
+        (-> (prepare conn sql) (execute params) (row-count))))))
+
 (defn ^string error-code
   "Fetch the SQLSTATE associated with the last operation on a connection or statement.
   SQLSTATE is a 5-character code (e.g. \"23000\", \"HY000\"), returned as a string"

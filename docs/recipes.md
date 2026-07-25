@@ -22,6 +22,49 @@ phel-pdo never closes a connection it did not open:
 (def conn (pdo/from-connection php-pdo {:apply-defaults true}))
 ```
 
+## CRUD from maps
+
+`insert` / `update` / `delete` / `insert-many` build the statement from maps.
+Identifiers are validated against `[A-Za-z_][A-Za-z0-9_]*`; every value is bound.
+
+```clojure
+(pdo/insert conn :users {:name "phel"})                    ; => "1"  (last-insert-id)
+(pdo/update conn :users {:name "lisp"} {:id 1})            ; => 1    (affected rows)
+(pdo/delete conn :users {:id 1})                           ; => 1    (affected rows)
+(pdo/insert-many conn :users [{:name "a"} {:name "b"}])    ; => 2    (affected rows)
+```
+
+`update` prefixes its placeholders by clause, so the same column on both sides
+binds two different values:
+
+```clojure
+(pdo/update conn :users {:id 99} {:id 1})
+;; UPDATE users SET id = :set_id WHERE id = :where_id
+```
+
+### Guard rails
+
+An empty `where` map **raises** rather than generating an unqualified statement:
+
+```clojure
+(pdo/update conn :users {:name "x"} {})   ; InvalidArgumentException
+(pdo/delete conn :users {})               ; InvalidArgumentException
+```
+
+A missing where clause never means "every row" - silently rewriting or emptying
+a table is not a reasonable default. Write the raw SQL if that is genuinely what
+you want.
+
+`insert-many` requires every row to have the same keys, since a single `INSERT`
+has one column list. It returns an affected row count rather than an id: for a
+multi-row insert the id is driver-specific (MySQL reports the first, SQLite the
+last). Its statement carries `rows × columns` placeholders, which drivers cap -
+chunk very large batches yourself.
+
+For anything past this - joins, `or`, ranges, ordering - reach for
+[phel-sql](https://github.com/phel-lang/phel-sql). These four cover the flat-map
+cases and stop there deliberately.
+
 ## One-shot reads
 
 Most reads want rows, not a statement. Three helpers go straight there:
