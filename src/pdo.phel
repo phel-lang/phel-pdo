@@ -78,7 +78,7 @@
   "Prepares a statement for execution and returns a statement object"
   [conn stmt & [options]]
   (statement
-   (php/-> (conn-pdo conn) (prepare stmt (options->php (or options {}))))))
+   (php/-> (conn-pdo conn) (prepare stmt (options->php (or options {})))) {}))
 
 (declare set-fetch-mode)
 
@@ -90,7 +90,7 @@
   [conn sql & [params options]]
   (if (empty? params)
     (statement
-     (php/-> (conn-pdo conn) (query sql (get options :fetch-mode \PDO/FETCH_ASSOC))))
+     (php/-> (conn-pdo conn) (query sql (get options :fetch-mode \PDO/FETCH_ASSOC))) {})
     (let [stmt (prepare conn sql)]
       (when-let [mode (get options :fetch-mode)]
         (set-fetch-mode stmt mode))

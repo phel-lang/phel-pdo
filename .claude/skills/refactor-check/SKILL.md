@@ -41,7 +41,7 @@ phel-pdo is a thin idiomatic PDO wrapper, pure Phel, struct-based. There are no 
 |-------|------|
 | Namespace | `statement.phel` opens with `(in-ns phel.pdo)` |
 | Declares | New cross-file decls via `declare` in `src/pdo.phel` before `(load "pdo/statement")` |
-| Not-implemented block | "Not implemented yet" block kept in sync when a method gets wrapped |
+| API tables | `README.md` connection/statement tables list every public fn |
 
 ## Output Format
 

@@ -26,7 +26,7 @@ Walk the contributor flow for wrapping a PDO method.
 grep -n "(defn.* <kebab-name>" src/pdo.phel src/pdo/statement.phel
 ```
 
-If found, stop. If listed in the "Not implemented yet" block at the bottom of the relevant file, remove that line as part of this change.
+If found, stop. The PDO surface is fully wrapped as of #46, so a genuinely unwrapped method is unusual - double-check `README.md`'s API tables before adding one.
 
 ### 3. Pick the file
 

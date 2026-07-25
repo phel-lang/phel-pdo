@@ -306,6 +306,76 @@
     (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}] (pdo/fetch-all stmt)))))
 
 ;; ------------
+;; Bound columns
+;; ------------
+
+(deftest bind-column-refreshes-atoms-on-each-fetch
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (let [id   (atom nil)
+        name (atom nil)
+        stmt (-> (pdo/prepare *conn* "select id, name from t1 order by id")
+                 (pdo/execute)
+                 (pdo/bind-column 1 id)
+                 (pdo/bind-column 2 name))]
+    (is (= true (pdo/fetch-bound stmt)))
+    (is (= [1 "phel"] [(deref id) (deref name)]))
+    (is (= true (pdo/fetch-bound stmt)))
+    (is (= [2 "php"] [(deref id) (deref name)]))
+    (testing "exhausted cursor returns false and leaves the atoms alone"
+             (is (= false (pdo/fetch-bound stmt)))
+             (is (= [2 "php"] [(deref id) (deref name)])))))
+
+(deftest bind-column-binds-by-name
+  (seed-t1 *conn*)
+  (let [name (atom nil)
+        stmt (-> (pdo/prepare *conn* "select id, name from t1")
+                 (pdo/execute)
+                 (pdo/bind-column :name name))]
+    (pdo/fetch-bound stmt)
+    (is (= "phel" (deref name)))))
+
+(deftest bind-column-threads-and-returns-a-statement
+  (seed-t1 *conn*)
+  (let [stmt (-> (pdo/prepare *conn* "select name from t1")
+                 (pdo/bind-column 1 (atom nil)))]
+    (is (pdo/statement? stmt))))
+
+(deftest bind-column-leaves-the-original-statement-unbound
+  (seed-t1 *conn*)
+  (let [a     (atom nil)
+        stmt  (-> (pdo/prepare *conn* "select name from t1") (pdo/execute))
+        bound (pdo/bind-column stmt 1 a)]
+    (testing "structs are immutable, so the binding lives only on the returned one"
+             (is (empty? (stmt :bindings)))
+             (is (= 1 (count (bound :bindings)))))))
+
+(deftest fetch-bound-without-bindings-still-advances
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (let [stmt (-> (pdo/prepare *conn* "select name from t1") (pdo/execute))]
+    (is (= true (pdo/fetch-bound stmt)))
+    (is (= false (pdo/fetch-bound stmt)))))
+
+(deftest bind-column-reads-null-as-nil
+  (create-t1 *conn*)
+  (pdo/exec *conn* "insert into t1 (name) values (null)")
+  (let [name (atom :unset)
+        stmt (-> (pdo/prepare *conn* "select name from t1")
+                 (pdo/execute)
+                 (pdo/bind-column 1 name))]
+    (pdo/fetch-bound stmt)
+    (is (nil? (deref name)))))
+
+(deftest bind-column-rejects-an-unknown-column
+  (seed-t1 *conn*)
+  (let [stmt (-> (pdo/prepare *conn* "select name from t1")
+                 (pdo/execute)
+                 (pdo/bind-column :nope (atom nil)))]
+    (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/fetch-bound stmt)))))))
+
+;; ------------
 ;; IN expansion
 ;; ------------
 

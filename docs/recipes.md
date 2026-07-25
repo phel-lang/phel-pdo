@@ -22,6 +22,33 @@ phel-pdo never closes a connection it did not open:
 (def conn (pdo/from-connection php-pdo {:apply-defaults true}))
 ```
 
+## Bound columns
+
+PDO's `FETCH_BOUND` writes each fetched column straight into a variable. Phel has
+no by-reference locals to hand `PDOStatement::bindColumn`, so `pdo/bind-column`
+binds an **atom** instead:
+
+```clojure
+(let [id   (atom nil)
+      name (atom nil)
+      stmt (-> (pdo/prepare conn "select id, name from t1 order by id")
+               (pdo/execute)
+               (pdo/bind-column 1 id)
+               (pdo/bind-column :name name))]
+  (while (pdo/fetch-bound stmt)
+    (println (deref id) (deref name))))
+```
+
+`column` is a 1-based position (as PDO numbers them) or a column name.
+`bind-column` returns a *new* statement carrying the binding, so it threads -
+the statement struct stays immutable and the atoms are the only mutable cells.
+
+`fetch-bound` returns `false` once the cursor is exhausted, leaving the atoms at
+their last values, which is what PDO does with its bound variables.
+
+For most work `pdo/fetch` or `pdo/statement-seq` is simpler - reach for bound
+columns when you are porting PHP that already uses `FETCH_BOUND`.
+
 ## Matching a list with `IN`
 
 One placeholder binds one scalar, so `where id in (?)` with `[1 2 3]` matches

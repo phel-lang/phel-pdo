@@ -85,4 +85,4 @@ Every fetch routes through it, so result-set keys are always keywords.
 
 - A query builder. Use [phel-sql](https://github.com/phel-lang/phel-sql) for that - it returns `[sql params]` you feed straight into `prepare` + `execute`. See [recipes](recipes.md#using-phel-sql).
 - A connection pool / ORM / migration tool.
-- Wrapping every last PDO method. See the "Not implemented yet" block at the bottom of `src/pdo/statement.phel`; PRs welcome.
+- Mirroring PDO exactly. The surface is fully wrapped, but where PDO's mechanism does not fit Phel the wrapper takes the Phel-native route instead - see `bind-column`, which uses atoms because Phel has no by-reference locals for `PDOStatement::bindColumn`.

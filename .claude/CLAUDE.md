@@ -31,7 +31,7 @@ composer test     # vendor/bin/phel test
 
 1. Pick the file: connection-side → `src/pdo.phel`; statement-side → `src/pdo/statement.phel`.
 2. Write `defn <return-tag> <kebab-name>` next to its peers. Mutator → return the struct; reader → return Phel data (route fetches through `row->map`).
-3. Drop the entry from the "Not implemented yet" block at the bottom of the file.
+3. Confirm it is not already wrapped - the PDO surface is complete, so new wrappers are additions rather than gap-filling.
 4. Add a `deftest` in the matching section of `tests/pdo_test.phel`, driven through `*conn*` + `seed-t1` where possible.
 5. Update the API table in `README.md` and `## [Unreleased]` in `CHANGELOG.md`.
 
