@@ -156,14 +156,40 @@
   [conn]
   (php/-> (conn-pdo conn) (inTransaction)))
 
+;; Monotonic source of savepoint names. Savepoint names are identifiers, so they
+;; cannot be bound as parameters - they must be generated here and never taken
+;; from caller input. Nested levels need distinct names or ROLLBACK TO would
+;; unwind to the wrong one.
+(def- savepoint-counter (atom 0))
+
+(defn- next-savepoint-name []
+  (str "phel_sp_" (swap! savepoint-counter inc)))
+
+(defn with-savepoint
+  "Calls f inside a SAVEPOINT on conn: releases the savepoint and returns f's value,
+  or rolls back to it and re-throws. Requires an open transaction and a driver that
+  supports SAVEPOINT (SQLite, MySQL/InnoDB and PostgreSQL all do). This is the
+  primitive with-transaction uses for its nested case"
+  [conn f]
+  (let [sp (next-savepoint-name)]
+    (exec conn (str "SAVEPOINT " sp))
+    (try
+      (let [result (f)]
+        (exec conn (str "RELEASE SAVEPOINT " sp))
+        result)
+      (catch \Throwable e
+        (exec conn (str "ROLLBACK TO SAVEPOINT " sp))
+        (throw e)))))
+
 (defmacro with-transaction
   "Runs body inside a transaction on conn: commits on success and returns the last
   body value, or rolls back and re-throws on error. If conn is already in a
-  transaction, runs body inline without a nested begin/commit."
+  transaction, body runs inside a SAVEPOINT instead, so a failure that the caller
+  catches undoes only this block's writes and leaves the outer transaction intact."
   [conn & body]
   `(let [conn# ~conn]
      (if (in-transaction conn#)
-       (do ~@body)
+       (with-savepoint conn# (fn [] ~@body))
        (do
          (begin conn#)
          (try

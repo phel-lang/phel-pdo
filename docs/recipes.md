@@ -99,8 +99,36 @@ last body value) and rolls back + re-throws on any exception.
   (pdo/insert conn :accounts {:name "b", :balance 0}))
 ```
 
-If `conn` is already in a transaction, the body runs inline - no nested
-`begin`/`commit` (v1 uses no savepoints).
+### Nesting
+
+PDO cannot nest `beginTransaction`, so when `conn` is already in a transaction
+`with-transaction` brackets the body with a `SAVEPOINT` instead. A nested block
+that fails undoes only its own writes:
+
+```clojure
+(pdo/with-transaction conn
+  (pdo/insert conn :accounts {:name "a"})
+  (try
+    (pdo/with-transaction conn
+      (pdo/insert conn :accounts {:name "b"})
+      (throw (php/new \Exception "boom")))
+    (catch \Throwable _e :skipped)))
+;; => the "a" row is committed; the "b" row is not
+```
+
+An *uncaught* throw still propagates outward and rolls the whole transaction
+back, so the outer guarantee is unchanged.
+
+Savepoint names are generated internally and never taken from caller input -
+they are SQL identifiers and cannot be bound as parameters. This needs a driver
+with `SAVEPOINT` support; SQLite, MySQL/InnoDB and PostgreSQL all qualify.
+
+`pdo/with-savepoint` exposes the same primitive directly when you want a
+savepoint without the surrounding `with-transaction`:
+
+```clojure
+(pdo/with-savepoint conn (fn [] (pdo/insert conn :accounts {:name "c"})))
+```
 
 The manual primitives remain available when you need finer control:
 
