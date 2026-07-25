@@ -67,7 +67,8 @@ All functions live in the `phel.pdo` namespace.
 | `last-insert-id` | `(last-insert-id conn)` | ID of the last inserted row, as a string (as PDO reports it). |
 | `begin` / `commit` / `rollback` | `(begin conn)` … | Transaction control. |
 | `in-transaction` | `(in-transaction conn)` | `true` if a transaction is active. |
-| `with-transaction` | `(with-transaction conn & body)` | Run `body` in a transaction: commit + return last value, or rollback + re-throw. Runs inline if already in a transaction. |
+| `with-transaction` | `(with-transaction conn & body)` | Run `body` in a transaction: commit + return last value, or rollback + re-throw. When already in a transaction, `body` runs in a `SAVEPOINT` so a caught failure undoes only that block. |
+| `with-savepoint` | `(with-savepoint conn f)` | Call `f` inside a `SAVEPOINT`: release + return its value, or roll back to it and re-throw. The primitive behind nested `with-transaction`. |
 | `get-attribute` / `set-attribute` | `(get-attribute handle attr)` / `(set-attribute handle attr value)` | PDO attribute access; `handle` is a connection or a statement. |
 | `get-available-drivers` | `(get-available-drivers)` | Vector of installed PDO drivers (static; no connection needed). |
 | `error-code` | `(error-code handle)` | SQLSTATE string of the last operation; `handle` is a connection or a statement. |

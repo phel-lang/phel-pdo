@@ -209,6 +209,81 @@
   (testing "outer rollback still reverts the inline insert"
            (is (= 0 (pdo/fetch-column (pdo/query *conn* "select count(*) from t1"))))))
 
+(defn- count-t1 [conn]
+  (pdo/fetch-column (pdo/query conn "select count(*) from t1")))
+
+(deftest nested-transaction-rolls-back-inner-only
+  ;; The inner block throws and the caller swallows it. Only the inner write
+  ;; must disappear - the outer transaction still commits its own.
+  (create-t1 *conn*)
+  (pdo/with-transaction *conn*
+                        (insert-name *conn* "outer")
+                        (try
+                          (pdo/with-transaction *conn*
+                                                (insert-name *conn* "inner")
+                                                (throw (php/new \Exception "boom")))
+                          (catch \Throwable _e :caught)))
+  (is (= 1 (count-t1 *conn*)))
+  (is (= "outer" (pdo/fetch-column (pdo/query *conn* "select name from t1")))))
+
+(deftest nested-transaction-commits-on-success
+  (create-t1 *conn*)
+  (let [ret (pdo/with-transaction *conn*
+                                  (insert-name *conn* "outer")
+                                  (pdo/with-transaction *conn*
+                                                        (insert-name *conn* "inner")
+                                                        :inner-done))]
+    (is (= :inner-done ret))
+    (is (= 2 (count-t1 *conn*)))))
+
+(deftest nested-transaction-propagates-uncaught-throw
+  (create-t1 *conn*)
+  (let [threw (try
+                (pdo/with-transaction *conn*
+                                      (insert-name *conn* "outer")
+                                      (pdo/with-transaction *conn*
+                                                            (insert-name *conn* "inner")
+                                                            (throw (php/new \Exception "boom"))))
+                false
+                (catch \Exception _e true))]
+    (testing "an uncaught inner throw still rolls the whole outer transaction back"
+             (is (= true threw))
+             (is (= 0 (count-t1 *conn*)))
+             (is (= false (pdo/in-transaction *conn*))))))
+
+(deftest nested-transaction-three-levels-rolls-back-to-correct-level
+  (create-t1 *conn*)
+  (pdo/with-transaction *conn*
+                        (insert-name *conn* "L1")
+                        (pdo/with-transaction *conn*
+                                              (insert-name *conn* "L2")
+                                              (try
+                                                (pdo/with-transaction *conn*
+                                                                      (insert-name *conn* "L3")
+                                                                      (throw (php/new \Exception "boom")))
+                                                (catch \Throwable _e :caught))))
+  (testing "only the level that threw is undone"
+           (is (= 2 (count-t1 *conn*)))
+           (is (= [{:name "L1"} {:name "L2"}]
+                  (pdo/fetch-all (pdo/query *conn* "select name from t1 order by id"))))))
+
+(deftest nested-transaction-reports-in-transaction
+  (create-t1 *conn*)
+  (pdo/with-transaction *conn*
+                        (is (= true (pdo/in-transaction *conn*)))
+                        (pdo/with-transaction *conn*
+                                              (is (= true (pdo/in-transaction *conn*))))))
+
+(deftest savepoint-names-are-generated-and-unique
+  (create-t1 *conn*)
+  ;; Two sibling nested blocks in a loop must not reuse one savepoint name,
+  ;; or the second RELEASE would target the first block's savepoint.
+  (pdo/with-transaction *conn*
+                        (dofor [i :range [0 3]]
+                          (pdo/with-transaction *conn*
+                                                (insert-name *conn* (str "row" i)))))
+  (is (= 3 (count-t1 *conn*))))
+
 ;; -----
 ;; Query
 ;; -----

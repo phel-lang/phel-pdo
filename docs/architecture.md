@@ -44,6 +44,19 @@ The wrapper follows a few rules so the public surface stays predictable:
 | `ERRMODE_EXCEPTION` is set in `connect`. | Errors surface as `\PDOException` - don't re-wrap. |
 | Public functions never expose raw `\PDO` / `\PDOStatement`. | Wrapper stays the only seam. |
 
+### The one piece of module state
+
+Everything outside the PDO call sites is a pure function, with a single
+deliberate exception: `savepoint-counter`, a private atom in `src/pdo.phel`.
+
+Nested `with-transaction` brackets its body with a `SAVEPOINT`, and each nesting
+level needs a distinct name or `ROLLBACK TO` unwinds to the wrong one. Savepoint
+names are SQL identifiers, so they cannot be bound as parameters - they have to
+be generated. A monotonic counter is the smallest thing that guarantees
+uniqueness across sibling blocks in a loop, which `php/uniqid` would not.
+
+The counter is private, is never read by callers, and never takes caller input.
+
 ## Boundary crossings
 
 The only places PHP data and Phel data meet:

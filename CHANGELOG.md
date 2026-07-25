@@ -11,8 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`pdo/fetch-column` returns `nil` on an exhausted cursor**, not PHP's `false` sentinel, matching `pdo/fetch` and every other reader. It also gained a `not-found` argument - `(pdo/fetch-column stmt 0 :eof)` - because a SQL `NULL` column is `nil` too, and the two were previously indistinguishable. Internally it now reads through `fetch(FETCH_NUM)` rather than `fetchColumn`, so a column holding a real boolean `false` (Postgres `bool`) is no longer mistaken for end-of-rows. *Migration:* replace `(= false (pdo/fetch-column s))` with `(nil? ...)`, or pass a sentinel ([#35]).
 
+### Added
+
+- `pdo/with-savepoint` - run a thunk inside a `SAVEPOINT`, releasing it on success or rolling back to it and re-throwing. The primitive behind nested `pdo/with-transaction` ([#37]).
+
 ### Fixed
 
+- Nested `pdo/with-transaction` now isolates rollbacks. It used to run the body inline, so a nested block that threw and was caught by the caller still had its writes committed by the outer transaction - a failed unit of work silently became durable. The nested case is now bracketed with a `SAVEPOINT`. An uncaught throw still propagates and rolls the outer transaction back, as before ([#37]).
 - Passing something that is not a connection or statement to `pdo/get-attribute`, `pdo/set-attribute`, `pdo/error-code` or `pdo/error-info` now raises an `InvalidArgumentException` naming what was expected, instead of an opaque PHP `Error` from inside PDO. The connection-only and statement-only wrappers are guarded the same way, and handing a raw `\PDO` to any of them points you at `pdo/from-connection` ([#36]).
 
 ## [0.2.0] - 2026-07-25
@@ -166,3 +171,4 @@ The three BC entries for this release are listed under **Breaking changes** abov
 [#21]: https://github.com/phel-lang/phel-pdo/issues/21
 [#35]: https://github.com/phel-lang/phel-pdo/issues/35
 [#36]: https://github.com/phel-lang/phel-pdo/issues/36
+[#37]: https://github.com/phel-lang/phel-pdo/issues/37
