@@ -22,6 +22,55 @@ phel-pdo never closes a connection it did not open:
 (def conn (pdo/from-connection php-pdo {:apply-defaults true}))
 ```
 
+## Matching a list with `IN`
+
+One placeholder binds one scalar, so `where id in (?)` with `[1 2 3]` matches
+nothing rather than erroring. This is the one thing PDO genuinely cannot do, and
+the usual workaround - generating N placeholders by string concatenation - is
+exactly what this library exists to keep you away from.
+
+`pdo/expand-in` returns `[sql params]`, the same shape
+[phel-sql](https://github.com/phel-lang/phel-sql) produces:
+
+```clojure
+(let [[sql params] (pdo/expand-in "select * from t1 where id in (?) and status = ?"
+                                  [[1 2 3] "active"])]
+  (pdo/select conn sql params))
+
+;; sql    => "select * from t1 where id in (?, ?, ?) and status = ?"
+;; params => [1 2 3 "active"]
+```
+
+Named params work the same way, expanding to `:ids_0`, `:ids_1`, …:
+
+```clojure
+(let [[sql params] (pdo/expand-in "select * from t1 where id in (:ids)" {:ids [1 2 3]})]
+  (pdo/select conn sql params))
+```
+
+Scalars pass through untouched, and several lists in one statement each expand
+independently.
+
+### What it will not touch
+
+A `?` or `:name` is only a placeholder when it is really one. Inside a string
+literal, a quoted identifier (`"..."` or `` `...` ``), or a comment, it is data:
+
+```clojure
+(pdo/expand-in "select * from t1 where note = 'why?' and id in (?)" [[1 2]])
+;; => ["select * from t1 where note = 'why?' and id in (?, ?)" [1 2]]
+```
+
+Postgres' `::` cast is not read as a named placeholder either. Getting any of
+this wrong would silently shift every later binding by one, which is why it is
+handled by a scanner rather than a regex.
+
+### Errors
+
+An empty list raises rather than emitting `IN (NULL)`. `IN ()` is invalid SQL
+everywhere, and a silently never-matching predicate looks like data instead of a
+bug. A params/placeholder count mismatch raises too, rather than reaching PDO.
+
 ## CRUD from maps
 
 `insert` / `update` / `delete` / `insert-many` build the statement from maps.

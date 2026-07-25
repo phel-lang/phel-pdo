@@ -305,6 +305,87 @@
   (let [stmt (pdo/query *conn* "select * from t1")]
     (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}] (pdo/fetch-all stmt)))))
 
+;; ------------
+;; IN expansion
+;; ------------
+
+;; The tokenizer is the whole difficulty here: a `?` inside a string literal, a
+;; comment, or next to a Postgres `::` cast must not be treated as a placeholder.
+;; Getting that wrong silently shifts every later binding by one.
+
+(deftest expand-in-expands-a-vector-positionally
+  (is (= ["select * from t1 where id in (?, ?, ?)" [1 2 3]]
+         (pdo/expand-in "select * from t1 where id in (?)" [[1 2 3]]))))
+
+(deftest expand-in-leaves-scalars-alone
+  (is (= ["select * from t1 where a = ? and b = ?" [1 "x"]]
+         (pdo/expand-in "select * from t1 where a = ? and b = ?" [1 "x"]))))
+
+(deftest expand-in-mixes-scalars-and-vectors
+  (is (= ["select * from t1 where id in (?, ?, ?) and status = ?" [1 2 3 "active"]]
+         (pdo/expand-in "select * from t1 where id in (?) and status = ?" [[1 2 3] "active"]))))
+
+(deftest expand-in-handles-several-vectors
+  (is (= ["select * from t1 where a in (?, ?) and b in (?, ?, ?)" [1 2 3 4 5]]
+         (pdo/expand-in "select * from t1 where a in (?) and b in (?)" [[1 2] [3 4 5]]))))
+
+(deftest expand-in-expands-named-placeholders
+  (is (= ["select * from t1 where id in (:ids_0, :ids_1)" {:ids_0 7, :ids_1 8}]
+         (pdo/expand-in "select * from t1 where id in (:ids)" {:ids [7 8]}))))
+
+(deftest expand-in-leaves-named-scalars-alone
+  (is (= ["select * from t1 where id = :id and n = :n" {:id 1, :n 2}]
+         (pdo/expand-in "select * from t1 where id = :id and n = :n" {:id 1, :n 2}))))
+
+(deftest expand-in-ignores-placeholders-in-string-literals
+  (testing "a ? inside a single-quoted literal is data, not a placeholder"
+           (is (= ["select * from t1 where note = 'why?' and id in (?, ?)" [1 2]]
+                  (pdo/expand-in "select * from t1 where note = 'why?' and id in (?)" [[1 2]]))))
+  (testing "doubled quotes do not end the literal"
+           (is (= ["select * from t1 where note = 'it''s ok? really' and id = ?" [1]]
+                  (pdo/expand-in "select * from t1 where note = 'it''s ok? really' and id = ?" [1]))))
+  (testing "a named placeholder inside a literal is data too"
+           (is (= ["select * from t1 where note = ':id' and id = :id" {:id 1}]
+                  (pdo/expand-in "select * from t1 where note = ':id' and id = :id" {:id 1})))))
+
+(deftest expand-in-ignores-placeholders-in-comments
+  (is (= ["select * from t1 -- why? :nope\nwhere id in (?, ?)" [1 2]]
+         (pdo/expand-in "select * from t1 -- why? :nope\nwhere id in (?)" [[1 2]])))
+  (is (= ["select /* ? :nope */ * from t1 where id = ?" [1]]
+         (pdo/expand-in "select /* ? :nope */ * from t1 where id = ?" [1]))))
+
+(deftest expand-in-ignores-quoted-identifiers
+  (is (= ["select \"we?rd\" from t1 where id = ?" [1]]
+         (pdo/expand-in "select \"we?rd\" from t1 where id = ?" [1])))
+  (is (= ["select `we?rd` from t1 where id = ?" [1]]
+         (pdo/expand-in "select `we?rd` from t1 where id = ?" [1]))))
+
+(deftest expand-in-leaves-postgres-casts-alone
+  (testing ":: is a cast operator, not a named placeholder"
+           (is (= ["select id::text from t1 where id = :id" {:id 1}]
+                  (pdo/expand-in "select id::text from t1 where id = :id" {:id 1})))))
+
+(deftest expand-in-rejects-an-empty-vector
+  (testing "IN () is invalid SQL on every driver; a silent IN (NULL) would look like data"
+           (is (= "InvalidArgumentException"
+                  (caught-class (fn [] (pdo/expand-in "select * from t1 where id in (?)" [[]])))))))
+
+(deftest expand-in-rejects-a-param-count-mismatch
+  (is (= "InvalidArgumentException"
+         (caught-class (fn [] (pdo/expand-in "select * from t1 where a = ? and b = ?" [1])))))
+  (is (= "InvalidArgumentException"
+         (caught-class (fn [] (pdo/expand-in "select * from t1 where a = ?" [1 2])))))
+  (is (= "InvalidArgumentException"
+         (caught-class (fn [] (pdo/expand-in "select * from t1 where id = :missing" {:other 1}))))))
+
+(deftest expand-in-round-trips-through-query
+  (create-t1 *conn*)
+  (dofor [n :in ["a" "b" "c" "d"]] (insert-name *conn* n))
+  (let [[sql params] (pdo/expand-in "select name from t1 where id in (?) order by id" [[1 3]])]
+    (is (= [{:name "a"} {:name "c"}] (pdo/select *conn* sql params))))
+  (let [[sql params] (pdo/expand-in "select name from t1 where id in (:ids) order by id" {:ids [2 4]})]
+    (is (= [{:name "b"} {:name "d"}] (pdo/select *conn* sql params)))))
+
 ;; -------------
 ;; CRUD builders
 ;; -------------

@@ -73,6 +73,7 @@ All functions live in the `phel.pdo` namespace.
 | `update` | `(update conn table set-map where-map)` | `UPDATE` matched rows, return affected count. Both maps must be non-empty. |
 | `delete` | `(delete conn table where-map)` | `DELETE` matched rows, return affected count. `where-map` must be non-empty. |
 | `insert-many` | `(insert-many conn table rows)` | Insert a seq of same-keyed maps in one multi-`VALUES` statement, return affected count. |
+| `expand-in` | `(expand-in sql params)` | Expand list params into `IN (?, ?, ?)` runs, returning `[sql params]` for `query` / `prepare`. |
 | `quote` | `(quote conn string & [type])` | Quote a string for safe embedding in SQL. |
 | `last-insert-id` | `(last-insert-id conn)` | ID of the last inserted row, as a string (as PDO reports it). |
 | `begin` / `commit` / `rollback` | `(begin conn)` … | Transaction control. |

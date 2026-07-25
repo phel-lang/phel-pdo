@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `pdo/expand-in` - expands list-valued params into matching placeholder runs, returning `[sql params]` ready for `pdo/query` or `pdo/prepare`. `in (?)` with `[1 2 3]` becomes `in (?, ?, ?)`; named params expand to `:ids_0, :ids_1`. Binding a variable-length list is the one thing PDO genuinely cannot do, and the hand-rolled workaround means concatenating SQL. The scanner leaves `?` and `:name` inside string literals, quoted identifiers and comments alone, and does not mistake a Postgres `::` cast for a placeholder. An empty list and a param/placeholder count mismatch both raise ([#45]).
 - `pdo/update`, `pdo/delete` and `pdo/insert-many` - the CRUD siblings `pdo/insert` was missing. All validate identifiers with the same `check-ident` rule and bind every value as a parameter. `update` prefixes its placeholders by clause (`:set_id` / `:where_id`) so `set id = ? where id = ?` binds two different values correctly. An empty `where` map raises rather than silently rewriting or emptying the whole table, and `insert-many` requires one shared key set across rows. `insert-many` returns an affected row count, not an id - that is driver-specific for multi-row inserts ([#43]).
 - `pdo/select`, `pdo/select-one` and `pdo/select-value` - one-shot reads that go straight to rows. `select` returns every row (`[]` when none), `select-one` the first row or `nil`, `select-value` the first column of the first row with an optional `not-found` sentinel. All three bind params through a prepared statement and release the cursor before returning. `select` forwards options to `pdo/fetch-all`, so `{:as :rows}` works there too ([#42]).
 - `pdo/fetch-all` takes an `:as` option to pick the row shape. `:maps` (the default, unchanged) gives a seq of maps; `:rows` gives `{:cols [...] :rows [[...]]}` for column-oriented work - **5x faster** on 20k rows x 5 columns (869 ms -> 172 ms), because it never builds a map per row. An unknown `:as` raises `InvalidArgumentException` rather than silently falling back ([#40]).
@@ -188,3 +189,4 @@ The three BC entries for this release are listed under **Breaking changes** abov
 [#41]: https://github.com/phel-lang/phel-pdo/issues/41
 [#42]: https://github.com/phel-lang/phel-pdo/issues/42
 [#43]: https://github.com/phel-lang/phel-pdo/issues/43
+[#45]: https://github.com/phel-lang/phel-pdo/issues/45
