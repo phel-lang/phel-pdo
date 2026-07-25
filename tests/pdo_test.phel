@@ -582,6 +582,65 @@
   (let [[sql params] (pdo/expand-in "select name from t1 where id in (:ids) order by id" {:ids [2 4]})]
     (is (= [{:name "b"} {:name "d"}] (pdo/select *conn* sql params)))))
 
+;; -------------------------------
+;; Statement reuse for the builders
+;; -------------------------------
+
+(deftest builders-reuse-statements-without-leaking-state
+  (create-t1 *conn*)
+  (testing "repeated inserts through the cached statement all land"
+           (dofor [i :range [0 5]] (pdo/insert *conn* :t1 {:name (str "n" i)}))
+           (is (= 5 (pdo/select-value *conn* "select count(*) from t1")))
+           (is (= ["n0" "n1" "n2" "n3" "n4"]
+                  (map (fn [r] (r :name)) (pdo/select *conn* "select name from t1 order by id"))))))
+
+(deftest cached-statement-does-not-carry-stale-params
+  ;; A reused statement keeps whatever the previous execute bound. Every call
+  ;; must see only its own values.
+  (create-t1 *conn*)
+  (pdo/insert *conn* :t1 {:name "first"})
+  (pdo/insert *conn* :t1 {:name "second"})
+  (is (= ["first" "second"]
+         (map (fn [r] (r :name)) (pdo/select *conn* "select name from t1 order by id")))))
+
+(deftest cached-statements-are-keyed-by-sql
+  ;; Different column sets build different SQL and must not collide.
+  (create-t1 *conn*)
+  (pdo/exec *conn* "drop table if exists t2")
+  (pdo/exec *conn* "create table t2 (a integer, b varchar(64))")
+  (pdo/insert *conn* :t1 {:name "phel"})
+  (pdo/insert-many *conn* :t2 [{:a 1, :b "x"}])
+  (pdo/insert *conn* :t1 {:name "php"})
+  (is (= 2 (pdo/select-value *conn* "select count(*) from t1")))
+  (is (= 1 (pdo/select-value *conn* "select count(*) from t2"))))
+
+(deftest update-and-delete-reuse-statements-correctly
+  (create-t1 *conn*)
+  (dofor [i :range [0 4]] (pdo/insert *conn* :t1 {:name (str "n" i)}))
+  (testing "each update binds its own values through the reused statement"
+           (dofor [i :range [0 4]] (pdo/update *conn* :t1 {:name (str "u" i)} {:name (str "n" i)}))
+           (is (= ["u0" "u1" "u2" "u3"]
+                  (map (fn [r] (r :name)) (pdo/select *conn* "select name from t1 order by id")))))
+  (testing "and each delete matches only its own row"
+           (dofor [i :range [0 3]] (pdo/delete *conn* :t1 {:name (str "u" i)}))
+           (is (= 1 (pdo/select-value *conn* "select count(*) from t1")))))
+
+(deftest statement-cache-is-bounded
+  ;; More distinct column sets than the cache holds; eviction must not break
+  ;; correctness for any of them.
+  (pdo/exec *conn* "drop table if exists t3")
+  (pdo/exec *conn* (str "create table t3 (" (autoincrement-ddl *conn*) ", name varchar(64))"))
+  (dofor [i :range [0 40]] (pdo/insert *conn* :t3 {:name (str "n" i)}))
+  (is (= 40 (pdo/select-value *conn* "select count(*) from t3")))
+  (pdo/exec *conn* "drop table if exists t3"))
+
+(deftest close-releases-cached-statements
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (pdo/exec conn (str "create table t1 (" (autoincrement-ddl conn) ", name varchar(64))"))
+    (pdo/insert conn :t1 {:name "phel"})
+    (pdo/close conn)
+    (is (empty? (get (deref (conn :state)) :stmt-cache)))))
+
 ;; -------------
 ;; CRUD builders
 ;; -------------

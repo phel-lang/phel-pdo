@@ -94,9 +94,14 @@ PHP/Phel boundary. Before and after any change to `row->map`, `column-keywords`,
 `fetch-all` or `statement-seq`, get a number:
 
 ```bash
-vendor/bin/phel run bench/fetch_all.phel
+vendor/bin/phel run bench/fetch_all.phel        # row shaping
+vendor/bin/phel run bench/insert_loop.phel      # statement reuse in the builders
 BENCH_ROWS=100000 vendor/bin/phel run bench/fetch_all.phel
 ```
+
+`insert_loop.phel` honours the same `PHEL_PDO_DSN` vars as the tests. Run it
+against PostgreSQL for anything touching statement reuse - preparing is nearly
+free on SQLite and a server round-trip there.
 
 It reports `pdo/fetch-all` and `pdo/statement-seq` against raw `PDO::fetchAll` on
 the same result set. Compare against the same commit twice (`git stash` the source

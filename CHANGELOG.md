@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `pdo/insert`, `pdo/update`, `pdo/delete` and `pdo/insert-many` reuse their prepared statement across calls instead of re-preparing the same SQL every time. A loop of 2000 `pdo/insert` calls: PostgreSQL **1350 ms -> 721 ms** (1.9x), MySQL 503 -> 433, SQLite 247 -> 219. The cache is private, bounded and used only by the builders, which own their statement end to end; `pdo/prepare` is deliberately *not* cached, since it hands the statement to the caller and two live users of one statement would silently share a cursor. `pdo/close` releases it. `bench/insert_loop.phel` reproduces the numbers ([#44]).
 - The test suite is driver-parametric. It still defaults to `sqlite::memory:`, so `composer test` needs no server, but `PHEL_PDO_DSN` points it at MySQL or PostgreSQL and CI now runs all three plus PHP 8.4 and 8.5. Fixtures pick DDL per driver, and the few genuinely driver-specific expectations branch inline with the reason stated ([#47]).
 - `pdo/fetch-all` and `pdo/statement-seq` compute the result set's column keywords once instead of re-keywording every cell of every row: **2.2x** and **2.5x** faster respectively on 20k rows x 5 columns (2002 ms -> 924 ms, 2090 ms -> 848 ms). No API change; rows come back identical. Drivers that cannot report column metadata fall back to the previous `FETCH_ASSOC` path. `bench/fetch_all.phel` reproduces the numbers ([#39]).
 
@@ -192,6 +193,7 @@ The three BC entries for this release are listed under **Breaking changes** abov
 [#41]: https://github.com/phel-lang/phel-pdo/issues/41
 [#42]: https://github.com/phel-lang/phel-pdo/issues/42
 [#43]: https://github.com/phel-lang/phel-pdo/issues/43
+[#44]: https://github.com/phel-lang/phel-pdo/issues/44
 [#45]: https://github.com/phel-lang/phel-pdo/issues/45
 [#46]: https://github.com/phel-lang/phel-pdo/issues/46
 [#47]: https://github.com/phel-lang/phel-pdo/issues/47

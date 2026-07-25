@@ -1,0 +1,64 @@
+;; Benchmark for statement reuse in the map builders.
+;;
+;;   vendor/bin/phel run bench/insert_loop.phel
+;;   BENCH_ROWS=5000 vendor/bin/phel run bench/insert_loop.phel
+;;
+;; insert / update / delete / insert-many build one SQL string per (table,
+;; column-set), so a loop would re-prepare the same SQL every iteration without
+;; the private statement cache. Preparing is nearly free on SQLite and a server
+;; round-trip on PostgreSQL, so measure before changing anything here.
+;;
+;; Point it at a real server with the same env vars the test suite uses:
+;;
+;;   PHEL_PDO_DSN="pgsql:host=127.0.0.1;port=55432;dbname=phel_pdo_test" \
+;;   PHEL_PDO_USER=postgres PHEL_PDO_PASS=postgres \
+;;   vendor/bin/phel run bench/insert_loop.phel
+
+(ns bench\insert-loop
+  (:require phel.pdo))
+
+(def- default-rows 2000)
+
+(defn- env-or [name fallback]
+  (let [v (php/getenv name)]
+    (if (or (php/=== v false) (= "" v)) fallback v)))
+
+(defn- ms [f]
+  (let [t0 (php/microtime true)]
+    (f)
+    (php/round (* 1000 (- (php/microtime true) t0)) 1)))
+
+(defn- id-column [dsn]
+  (cond
+    (php/str_contains dsn "mysql") "id int auto_increment primary key"
+    (php/str_contains dsn "pgsql") "id serial primary key"
+    "id integer primary key autoincrement"))
+
+(defn- run [rows]
+  (let [dsn  (env-or "PHEL_PDO_DSN" "sqlite::memory:")
+        conn (pdo/connect dsn (env-or "PHEL_PDO_USER" nil) (env-or "PHEL_PDO_PASS" nil))]
+    (pdo/exec conn "drop table if exists bench_insert")
+    (pdo/exec conn (str "create table bench_insert (" (id-column dsn) ", name varchar(64))"))
+    (println (str "\n" dsn "\n"))
+
+    (let [built (ms (fn []
+                      (pdo/with-transaction conn
+                                            (dofor [i :range [0 rows]]
+                                              (pdo/insert conn :bench_insert {:name "x"})))))
+          _     (pdo/exec conn "delete from bench_insert")
+          hand  (ms (fn []
+                      (pdo/with-transaction conn
+                                            (let [stmt (pdo/prepare conn "insert into bench_insert (name) values (:name)")]
+                                              (dofor [i :range [0 rows]]
+                                                (pdo/execute stmt {:name "x"}))))))]
+      (println (php/str_pad (str rows " x pdo/insert") 36) (str built " ms"))
+      (println (php/str_pad (str rows " x execute on one prepare") 36) (str hand " ms"))
+      (println (str "\npdo/insert is " (php/round (/ built (max hand 0.01)) 2)
+                    "x the hand-rolled floor (SQL building, ident checks and"))
+      (println "last-insert-id are the remainder - the prepare itself is cached)"))
+
+    (pdo/exec conn "drop table if exists bench_insert")
+    (pdo/close conn)))
+
+(run (let [env (php/getenv "BENCH_ROWS")]
+       (if (php/=== env false) default-rows (php/intval env))))
