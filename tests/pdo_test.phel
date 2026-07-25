@@ -305,6 +305,45 @@
   (let [stmt (pdo/query *conn* "select * from t1")]
     (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}] (pdo/fetch-all stmt)))))
 
+(deftest fetch-all-handles-null-columns
+  (create-t1 *conn*)
+  (pdo/exec *conn* "insert into t1 (name) values ('phel')")
+  (pdo/exec *conn* "insert into t1 (name) values (null)")
+  (is (= [{:id 1, :name "phel"} {:id 2, :name nil}]
+         (pdo/fetch-all (pdo/query *conn* "select * from t1 order by id")))))
+
+(deftest fetch-all-returns-empty-for-no-rows
+  (seed-t1 *conn*)
+  (is (= [] (pdo/fetch-all (pdo/query *conn* "select * from t1 where id = 999")))))
+
+(deftest fetch-all-keeps-last-of-duplicate-column-names
+  ;; FETCH_ASSOC collapses duplicates onto the last one; the keyword-cached path
+  ;; must not diverge from that.
+  (seed-t1 *conn*)
+  (is (= [{:x 2}] (pdo/fetch-all (pdo/query *conn* "select 1 as x, 2 as x from t1")))))
+
+(deftest fetch-all-preserves-column-order-and-types
+  (seed-t1 *conn*)
+  (is (= [{:a 1, :b "two", :c nil}]
+         (pdo/fetch-all (pdo/query *conn* "select 1 as a, 'two' as b, null as c from t1")))))
+
+(deftest statement-seq-matches-fetch-all
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (is (= (pdo/fetch-all (pdo/query *conn* "select * from t1 order by id"))
+         (into [] (pdo/statement-seq (pdo/query *conn* "select * from t1 order by id"))))))
+
+(deftest statement-seq-is-lazy
+  (create-t1 *conn*)
+  (dofor [i :range [0 5]] (insert-name *conn* (str "n" i)))
+  (testing "take realises only what it needs and still reads correctly"
+           (is (= [{:name "n0"} {:name "n1"}]
+                  (->> (pdo/query *conn* "select name from t1 order by id")
+                       (pdo/statement-seq)
+                       (take 2)
+                       (into []))))))
+
 (deftest fetch-column-returns-nil-when-exhausted
   (seed-t1 *conn*)
   (let [stmt (pdo/query *conn* "select name from t1 where id = 999")]

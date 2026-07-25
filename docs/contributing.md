@@ -48,6 +48,22 @@ vendor/bin/phel test tests/pdo_test.phel
 > [!NOTE]
 > The Phel test runner has no `--filter`. To narrow execution, edit the file or copy the test you care about into a scratch file.
 
+## Benchmarking
+
+Row shaping is the one hot path in the library - every fetched cell crosses the
+PHP/Phel boundary. Before and after any change to `row->map`, `column-keywords`,
+`fetch-all` or `statement-seq`, get a number:
+
+```bash
+vendor/bin/phel run bench/fetch_all.phel
+BENCH_ROWS=100000 vendor/bin/phel run bench/fetch_all.phel
+```
+
+It reports `pdo/fetch-all` and `pdo/statement-seq` against raw `PDO::fetchAll` on
+the same result set. Compare against the same commit twice (`git stash` the source
+change, run, pop) rather than against a number from another machine - the
+absolute figures move a lot between runs, the ratio does not.
+
 Conventions:
 
 - `(use-fixtures :each db-fixture)` binds `*conn*` to a fresh `sqlite::memory:` per `deftest`.

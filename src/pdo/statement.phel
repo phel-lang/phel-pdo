@@ -12,6 +12,25 @@
 (defn- row->map [row]
   (into {} (for [[k v] :pairs (php->phel row)] [(keyword k) v])))
 
+(defn- column-keywords
+  "Keyword vector for the statement's result-set columns, in ordinal order, or nil
+  when the driver cannot report column metadata (getColumnMeta is optional and some
+  ODBC/dblib setups omit it). Column names are constant for a result set, so this is
+  computed once and reused for every row instead of re-keywording each cell."
+  [stmt]
+  (let [s (stmt-handle stmt)]
+    (try
+      (into [] (for [i :range [0 (php/-> s (columnCount))]]
+                 (keyword (php/aget (php/-> s (getColumnMeta i)) "name"))))
+      (catch \Throwable _e nil))))
+
+(defn- num-row->map
+  "Shapes one FETCH_NUM row against the pre-computed column keywords. php->phel
+  already yields a vector for a PHP list, so it is zipped directly - routing it
+  through `values` first rebuilds the sequence and costs more than the zip."
+  [ks row]
+  (zipmap ks (php->phel row)))
+
 (defn fetch
   "Fetches the next row from a result set, or nil if no more rows"
   [stmt]
@@ -37,16 +56,29 @@
 (defn fetch-all
   "Fetches the remaining rows from a result set as a seq of maps"
   [stmt]
-  (map row->map (or (php/-> (stmt-handle stmt) (fetchAll \PDO/FETCH_ASSOC)) [])))
+  (if-let [ks (column-keywords stmt)]
+    (map (partial num-row->map ks)
+         (or (php/-> (stmt-handle stmt) (fetchAll \PDO/FETCH_NUM)) []))
+    (map row->map (or (php/-> (stmt-handle stmt) (fetchAll \PDO/FETCH_ASSOC)) []))))
+
+(defn- num-row-seq [stmt ks]
+  (lazy-seq
+   (when-let [row (php/-> (stmt-handle stmt) (fetch \PDO/FETCH_NUM))]
+     (cons (num-row->map ks row) (num-row-seq stmt ks)))))
+
+(defn- assoc-row-seq [stmt]
+  (lazy-seq
+   (when-let [row (fetch stmt)]
+     (cons row (assoc-row-seq stmt)))))
 
 (defn statement-seq
   "Returns a lazy seq of the statement's remaining rows as maps, fetched one at a
   time. The cursor stays open until the seq is fully consumed; on drivers with
   cursor limits, realise it fully or call close-cursor when done early"
   [stmt]
-  (lazy-seq
-   (when-let [row (fetch stmt)]
-     (cons row (statement-seq stmt)))))
+  (if-let [ks (column-keywords stmt)]
+    (num-row-seq stmt ks)
+    (assoc-row-seq stmt)))
 
 (defn fetch-object
   "Fetches the next row as an object (stdClass by default, or an instance of class-name), or nil if no more rows"

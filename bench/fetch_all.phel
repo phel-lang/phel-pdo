@@ -1,0 +1,47 @@
+;; Benchmark for the row-shaping hot path.
+;;
+;;   vendor/bin/phel run bench/fetch_all.phel
+;;   BENCH_ROWS=100000 vendor/bin/phel run bench/fetch_all.phel
+;;
+;; Compares pdo/fetch-all against raw PDO::fetchAll on the same result set, so a
+;; change to row->map / column-keywords can be judged against a number instead of
+;; a guess. Defaults to 20k rows x 5 columns on sqlite ::memory:.
+
+(ns bench\fetch-all
+  (:require phel.pdo))
+
+(def- default-rows 20000)
+
+(defn- ms-since [t0]
+  (php/round (* 1000 (- (php/microtime true) t0)) 1))
+
+(defn- bench [label f]
+  (let [t0     (php/microtime true)
+        result (f)
+        took   (ms-since t0)]
+    (println (php/str_pad label 34) (php/str_pad (str took " ms") 12) (str "-> " result))
+    took))
+
+(defn- seed [conn rows]
+  (pdo/exec conn "create table big (id integer primary key, a text, b text, c text, d text)")
+  (pdo/with-transaction conn
+                        (let [stmt (pdo/prepare conn "insert into big (a,b,c,d) values (?,?,?,?)")]
+                          (dofor [_ :range [0 rows]]
+                            (pdo/execute stmt ["aaa" "bbb" "ccc" "ddd"]))))
+  conn)
+
+(defn- run [rows]
+  (let [conn (seed (pdo/connect "sqlite::memory:") rows)]
+    (println (str "\n" rows " rows x 5 columns, sqlite ::memory:\n"))
+    (let [wrapped (bench "pdo/fetch-all"
+                         (fn [] (count (pdo/fetch-all (pdo/query conn "select * from big")))))
+          seqd    (bench "pdo/statement-seq (realised)"
+                         (fn [] (count (into [] (pdo/statement-seq (pdo/query conn "select * from big"))))))
+          raw     (bench "raw PDO::fetchAll (floor)"
+                         (fn [] (php/count (php/-> (php/-> (conn :pdo) (query "select * from big"))
+                                                   (fetchAll \PDO/FETCH_ASSOC)))))]
+      (println (str "\nfetch-all is " (php/round (/ wrapped raw) 1) "x the raw PDO floor"))
+      (println (str "statement-seq is " (php/round (/ seqd raw) 1) "x the raw PDO floor")))))
+
+(run (let [env (php/getenv "BENCH_ROWS")]
+       (if (php/=== env false) default-rows (php/intval env))))
