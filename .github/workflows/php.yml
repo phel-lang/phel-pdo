@@ -11,19 +11,26 @@ permissions:
   contents: read
 
 jobs:
-  build:
-
+  # SQLite needs no server, so it also carries the PHP version matrix and the
+  # composer.json validation.
+  sqlite:
+    name: sqlite / PHP ${{ matrix.php-version }}
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.4', '8.5']
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.4'
-        extensions: mbstring
-        
+        php-version: ${{ matrix.php-version }}
+        extensions: mbstring, pdo_sqlite
+
     - name: Validate composer.json and composer.lock
       run: composer validate --strict
 
@@ -32,15 +39,105 @@ jobs:
       uses: actions/cache@v4
       with:
         path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        key: ${{ runner.os }}-php-${{ matrix.php-version }}-${{ hashFiles('**/composer.lock') }}
         restore-keys: |
-          ${{ runner.os }}-php-
+          ${{ runner.os }}-php-${{ matrix.php-version }}-
 
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
 
-    # Add a test script to composer.json, for instance: "test": "vendor/bin/phpunit"
-    # Docs: https://getcomposer.org/doc/articles/scripts.md
+    - name: Run test suite
+      run: composer run-script test
+
+  # The drivers where the interesting behaviour lives: emulated prepares,
+  # multi-rowset statements, driver-specific SQLSTATEs and quoting. SQLite is
+  # lenient in ways these are not.
+  mysql:
+    name: mysql / PHP 8.4
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: phel_pdo_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: mbstring, pdo_mysql, pdo_sqlite
+
+    - name: Cache Composer packages
+      uses: actions/cache@v4
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-8.4-
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
 
     - name: Run test suite
+      env:
+        PHEL_PDO_DSN: "mysql:host=127.0.0.1;port=3306;dbname=phel_pdo_test"
+        PHEL_PDO_USER: root
+        PHEL_PDO_PASS: root
+      run: composer run-script test
+
+  pgsql:
+    name: pgsql / PHP 8.4
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: phel_pdo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd=pg_isready
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: mbstring, pdo_pgsql, pdo_sqlite
+
+    - name: Cache Composer packages
+      uses: actions/cache@v4
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-8.4-
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+
+    - name: Run test suite
+      env:
+        PHEL_PDO_DSN: "pgsql:host=127.0.0.1;port=5432;dbname=phel_pdo_test"
+        PHEL_PDO_USER: postgres
+        PHEL_PDO_PASS: postgres
       run: composer run-script test
