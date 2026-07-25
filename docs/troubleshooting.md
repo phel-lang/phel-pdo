@@ -116,6 +116,33 @@ Two things work everywhere:
 Note also that **any** successful PDO call clears the error state - including
 `pdo/get-attribute`. Read the error before you do anything else with the handle.
 
+## `Class "phel\pdo\statement" not found`
+
+```
+Class "phel\pdo\statement" not found
+  at .phel/cache/compiled/phel.pdo__c344736d.php:45
+```
+
+Clear the cache and it goes away:
+
+```bash
+rm -rf .phel/cache
+```
+
+**What causes it.** A file pulled in with `(load ...)` compiles to its own cache
+entry, and that entry carries no PHP `namespace` declaration. Any `defstruct` in
+such a file therefore declares its class in the *global* namespace, while call
+sites reference the qualified name. The first run compiles in-process and works;
+the second reads the cache and fails.
+
+It is a phel-lang compiler issue rather than a phel-pdo one - reproducible in
+twenty lines with no PDO involved, by running any project with a `(load ...)`-ed
+`defstruct` twice.
+
+phel-pdo avoids it by declaring **both** structs in `src/pdo.phel`, the file that
+does carry the namespace. If you are hitting this in your own project, move your
+`defstruct` forms into the file with the `(ns ...)` form.
+
 ## Method I want isn't wrapped
 
 Check `README.md`'s API tables first - the PDO surface is fully wrapped, so the

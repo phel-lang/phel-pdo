@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `Class "phel\pdo\statement" not found` on any run that read a warm `.phel/cache`. A file pulled in with `(load ...)` compiles to a cache entry with no PHP `namespace` declaration, so the `defstruct` in `src/pdo/statement.phel` declared its class in the global namespace while every call site referenced `phel\pdo\statement`. The first run compiled in-process and worked; the second failed. Both structs are now declared in `src/pdo.phel`, the file that carries the namespace ([#56]).
 - Params now bind with a PDO type inferred from the Phel value - `nil` as `PARAM_NULL`, booleans as `PARAM_BOOL`, integers as `PARAM_INT`, everything else as `PARAM_STR`. Everything previously defaulted to `PARAM_STR`, which native prepares mostly re-inferred but emulated prepares (PDO's MySQL default) did not: `limit :n` interpolated as `limit '10'`, a syntax error on MySQL, and `where id = '10'` defeated integer indexes. Applies to `pdo/bind-value`, `pdo/bind-param` and `pdo/execute` alike; an explicit `type` argument still wins. `pdo/execute` now binds each param individually, since handing the array to `PDOStatement::execute` forces `PARAM_STR` on every value ([#38]).
 - Nested `pdo/with-transaction` now isolates rollbacks. It used to run the body inline, so a nested block that threw and was caught by the caller still had its writes committed by the outer transaction - a failed unit of work silently became durable. The nested case is now bracketed with a `SAVEPOINT`. An uncaught throw still propagates and rolls the outer transaction back, as before ([#37]).
 - Passing something that is not a connection or statement to `pdo/get-attribute`, `pdo/set-attribute`, `pdo/error-code` or `pdo/error-info` now raises an `InvalidArgumentException` naming what was expected, instead of an opaque PHP `Error` from inside PDO. The connection-only and statement-only wrappers are guarded the same way, and handing a raw `\PDO` to any of them points you at `pdo/from-connection` ([#36]).
@@ -198,3 +199,4 @@ The three BC entries for this release are listed under **Breaking changes** abov
 [#46]: https://github.com/phel-lang/phel-pdo/issues/46
 [#47]: https://github.com/phel-lang/phel-pdo/issues/47
 [#48]: https://github.com/phel-lang/phel-pdo/issues/48
+[#56]: https://github.com/phel-lang/phel-pdo/issues/56
