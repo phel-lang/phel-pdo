@@ -2,6 +2,10 @@
 
 PDO wrapper for [Phel](https://phel-lang.org). Talk to relational databases from Phel without dropping into PHP interop.
 
+Every PDO method has a wrapper, params bind with the right type automatically,
+rows come back as Phel maps, and transactions nest properly. Tested against
+SQLite, MySQL and PostgreSQL.
+
 ## Install
 
 ```bash
@@ -19,27 +23,43 @@ Requires PHP `>=8.4` and `phel-lang/phel-lang ^0.41`.
 (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))")
 (pdo/exec conn "insert into t1 (name) values ('phel'), ('php')")
 
-;; Query with params - bound through a prepared statement, never interpolated
-(-> (pdo/query conn "select * from t1 where id = ?" [1])
-    (pdo/fetch))
+;; Read - params are bound, never interpolated into the SQL
+(pdo/select conn "select * from t1")
+;; => [{:id 1, :name "phel"} {:id 2, :name "php"}]
+
+(pdo/select-one conn "select * from t1 where id = ?" [1])
+;; => {:id 1, :name "phel"}        ; nil when there are no rows
+
+(pdo/select-value conn "select count(*) from t1")
+;; => 2                            ; first column of the first row
+
+;; Named params work everywhere positional ones do
+(pdo/select-one conn "select * from t1 where name = :name" {:name "phel"})
 ;; => {:id 1, :name "phel"}
 
-;; Named params work too
-(-> (pdo/query conn "select * from t1 where id = :id" {:id 1})
-    (pdo/fetch))
-;; => {:id 1, :name "phel"}
+;; Write from a map
+(pdo/insert conn :t1 {:name "lisp"})       ; => "3"  new last-insert-id
+(pdo/update conn :t1 {:name "clj"} {:id 3}) ; => 1   affected rows
+(pdo/delete conn :t1 {:id 3})               ; => 1   affected rows
 
-;; Reuse a prepared statement across executions
+;; Transactions - nested blocks get a SAVEPOINT, so a caught failure
+;; undoes only that block
+(pdo/with-transaction conn
+  (pdo/insert conn :t1 {:name "a"})
+  (pdo/insert conn :t1 {:name "b"}))
+```
+
+Rows come back as maps keyed by column keyword. `pdo/select` returns `[]` when
+there are no rows; `pdo/select-one` and `pdo/select-value` return `nil`.
+
+Need the statement itself - to stream, to re-execute, to check `row-count`?
+`pdo/query` and `pdo/prepare` hand it back:
+
+```clojure
 (let [stmt (pdo/prepare conn "select * from t1 where id = :id")]
   (-> stmt (pdo/execute {:id 1}) (pdo/fetch)))
 ;; => {:id 1, :name "phel"}
-
-;; Insert a row from a map
-(pdo/insert conn :t1 {:name "lisp"})
-;; => "3"   ; new last-insert-id (string, as PDO reports it)
 ```
-
-`pdo/fetch` returns the row as a map keyed by column keyword, or `nil` when no rows remain.
 
 ## With phel-sql
 

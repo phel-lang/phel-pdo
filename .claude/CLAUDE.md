@@ -7,15 +7,22 @@ PDO wrapper for [Phel](https://phel-lang.org). Pure Phel. Wraps `\PDO` and `\PDO
 ```
 src/pdo.phel           public API (connection-side) + (load "pdo/statement") loader
 src/pdo/statement.phel statement-side wrappers (in-ns phel.pdo)
-tests/pdo_test.phel    deftest per behaviour; phel.test + sqlite::memory: fixtures
+tests/pdo_test.phel    deftest per behaviour; driver-parametric (PHEL_PDO_DSN), sqlite by default
+bench/                 fetch_all.phel + insert_loop.phel, reproducible perf numbers
 release.sh             release automation (CHANGELOG → tag → GitHub release)
 phel-config.php        not used (≥ phel 0.37, library autoload via composer.json)
 ```
 
 Two structs, two files:
 
-- `connection { :pdo }` - opened by `pdo/connect`, threads through `exec`/`query`/`prepare`/`begin`/…
-- `statement  { :stmt }` - returned by `prepare` / `query`, threads through `bind-value`/`execute`/`fetch`/…
+- `connection { :pdo owned state }` - opened by `pdo/connect`, threads through `exec`/`query`/`prepare`/`begin`/…
+  `owned` distinguishes `connect` from `from-connection`; `state` is an atom holding the closed flag,
+  the savepoint counter's peer, and the builders' statement cache.
+- `statement  { :stmt bindings }` - returned by `prepare` / `query`, threads through `bind-value`/`execute`/`fetch`/…
+  `bindings` is the `bind-column` → atom map read by `fetch-bound`.
+
+**Both `defstruct` forms live in `src/pdo.phel`** - a `(load ...)`-ed file gets no PHP `namespace`
+declaration, so a struct declared there lands in the global namespace (phel-lang#2834).
 
 No PHP source. No PHPUnit. No rector / cs-fixer / phpstan.
 

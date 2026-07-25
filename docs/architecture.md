@@ -5,11 +5,13 @@ phel-pdo is a single-namespace, two-struct wrapper around `\PDO` and `\PDOStatem
 ## Layout
 
 ```
-src/pdo.phel              (ns phel.pdo)        connection-side wrappers
+src/pdo.phel              (ns phel.pdo)        connection-side wrappers + both defstructs
 src/pdo/statement.phel    (in-ns phel.pdo)     statement-side wrappers
+tests/pdo_test.phel                            one suite, three drivers
+bench/                                         reproducible performance numbers
 ```
 
-`src/pdo.phel` ends with `(load "pdo/statement")` so both files share one namespace. Anything in `statement.phel` that `pdo.phel` references is forward-declared via `(declare statement)`.
+`src/pdo.phel` ends with `(load "pdo/statement")` so both files share one namespace. Anything in `statement.phel` that `pdo.phel` references is forward-declared with `declare` before the `load` - see the `fetch` / `fetch-all` / `close-cursor` declarations that the connection-side readers depend on.
 
 > [!NOTE]
 > One namespace, two files. Public API is `phel.pdo/*` regardless of which file a function lives in.
