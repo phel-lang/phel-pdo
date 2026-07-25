@@ -182,6 +182,141 @@
     (close-cursor stmt)
     value))
 
+;;; ---------------------------------------------------------------------------
+;;; IN (...) expansion
+;;;
+;;; PDO binds one placeholder to one scalar, so a variable-length list cannot be
+;;; bound directly: `where id in (?)` with [1 2 3] matches nothing rather than
+;;; erroring. The caller has to generate N placeholders and flatten the params to
+;;; match, which means concatenating SQL - exactly what this library exists to
+;;; avoid. expand-in does it once, correctly.
+;;;
+;;; The scanner is the whole job. A `?` or `:name` inside a string literal, a
+;;; quoted identifier or a comment is data, and a `::` is a Postgres cast. Treat
+;;; any of them as a placeholder and every later binding silently shifts by one.
+
+(defn- char-at [s i]
+  (php/substr s i 1))
+
+(defn- skip-delimited
+  "Index just past a run opened at i by open and closed by close. A doubled
+  delimiter ('' inside a literal) escapes rather than closes."
+  [sql i open close]
+  (let [len (php/strlen sql)]
+    (loop [j (inc i)]
+      (cond
+        (>= j len) len
+        (and (= close (char-at sql j))
+             (= close (char-at sql (inc j)))) (recur (+ j 2))
+        (= close (char-at sql j)) (inc j)
+        (recur (inc j))))))
+
+(defn- skip-to
+  "Index just past the next occurrence of marker, or the end of sql."
+  [sql i marker]
+  (let [at (php/strpos sql marker i)]
+    (if (php/=== at false) (php/strlen sql) (+ at (php/strlen marker)))))
+
+(defn- ident-char? [c]
+  (= 1 (php/preg_match "/^[A-Za-z0-9_]$/" c)))
+
+(defn- read-ident
+  "Index just past the identifier starting at i."
+  [sql i]
+  (let [len (php/strlen sql)]
+    (loop [j i]
+      (if (and (< j len) (ident-char? (char-at sql j)))
+        (recur (inc j))
+        j))))
+
+(defn- expansion
+  "Placeholder text for one param, and the values it contributes."
+  [named-key value]
+  (cond
+    (not (vector? value))
+    [(if named-key (str ":" named-key) "?") [[named-key value]]]
+
+    (empty? value)
+    (throw (php/new \InvalidArgumentException
+                    (str "expand-in: cannot expand an empty list"
+                         (if named-key (str " for :" named-key) "")
+                         " - `IN ()` is not valid SQL")))
+
+    named-key
+    [(php/implode ", " (phel->php (into [] (for [i :range [0 (count value)]]
+                                             (str ":" named-key "_" i)))))
+     (into [] (for [i :range [0 (count value)]]
+                [(str named-key "_" i) (get value i)]))]
+
+    [(php/implode ", " (phel->php (into [] (for [_ :in value] "?"))))
+     (into [] (for [v :in value] [nil v]))]))
+
+(defn expand-in
+  "Expands list-valued params into matching placeholder runs and returns
+  [sql params] ready for prepare/execute or query.
+
+  A vector param becomes N placeholders in place - `in (?)` with [1 2 3] becomes
+  `in (?, ?, ?)` - and its values splice into the flat param list. Scalars pass
+  through untouched. Named params expand to :name_0, :name_1, ...
+
+  Placeholders inside string literals, quoted identifiers and comments are left
+  alone, as is the Postgres `::` cast. An empty list raises rather than silently
+  producing a predicate that matches nothing, and so does a params/placeholder
+  count mismatch"
+  [sql params]
+  (let [named? (map? params)
+        len    (php/strlen sql)]
+    (loop [i 0, out "", used [], positional 0, names []]
+      (if (>= i len)
+        ;; `names` counts the placeholders the SQL actually carries; `used`
+        ;; counts the values they expanded to, which is a different number.
+        (let [seen     (if named? (count (distinct names)) positional)
+              expected (count params)]
+          (when (not= seen expected)
+            (throw (php/new \InvalidArgumentException
+                            (str "expand-in: SQL has " seen " placeholder(s) but "
+                                 expected " param(s) were given"))))
+          [out (if named?
+                 (into {} (for [[k v] :in used] [(keyword k) v]))
+                 (into [] (for [[_ v] :in used] v)))])
+        (let [c (char-at sql i)
+              n (char-at sql (inc i))]
+          (cond
+            ;; literals, quoted identifiers and comments are copied verbatim
+            (= c "'") (let [j (skip-delimited sql i "'" "'")]
+                        (recur j (str out (php/substr sql i (- j i))) used positional names))
+            (= c "\"") (let [j (skip-delimited sql i "\"" "\"")]
+                         (recur j (str out (php/substr sql i (- j i))) used positional names))
+            (= c "`") (let [j (skip-delimited sql i "`" "`")]
+                        (recur j (str out (php/substr sql i (- j i))) used positional names))
+            (and (= c "-") (= n "-")) (let [j (skip-to sql i "\n")]
+                                        (recur j (str out (php/substr sql i (- j i))) used positional names))
+            (and (= c "/") (= n "*")) (let [j (skip-to sql i "*/")]
+                                        (recur j (str out (php/substr sql i (- j i))) used positional names))
+            ;; Postgres cast, not a placeholder
+            (and (= c ":") (= n ":")) (recur (+ i 2) (str out "::") used positional names)
+
+            (and (= c ":") (ident-char? n) named?)
+            (let [j  (read-ident sql (inc i))
+                  nm (php/substr sql (inc i) (- j (inc i)))
+                  k  (keyword nm)]
+              (when-not (contains? params k)
+                (throw (php/new \InvalidArgumentException
+                                (str "expand-in: no param supplied for :" nm))))
+              (let [[text vals] (expansion nm (get params k))]
+                (recur j (str out text) (into used vals) positional (conj names nm))))
+
+            (and (= c "?") (not named?))
+            (do
+              (when (>= positional (count params))
+                (throw (php/new \InvalidArgumentException
+                                (str "expand-in: SQL has more placeholders than the "
+                                     (count params) " param(s) given"))))
+              (let [[text vals] (expansion nil (get params positional))]
+                (recur (inc i) (str out text) (into used vals) (inc positional) names)))
+
+            (recur (inc i) (str out c) used positional names)))))))
+
 (declare row-count)
 
 (defn- ident-names
