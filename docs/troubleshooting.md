@@ -93,6 +93,29 @@ PostgreSQL needs the sequence name. The wrapped `pdo/last-insert-id` calls `last
 
 `pdo/last-insert-id` returns the value as a string (as PDO does); coerce with `php/intval` only when you actually need a number.
 
+## `error-code` on a connection returns "00000" after a failed statement
+
+`pdo/error-code` and `pdo/error-info` forward PDO's own error state, and PDO only
+records a failed `exec()` against the **connection** on SQLite. `pdo_mysql` and
+`pdo_pgsql` attach it to the result and leave the connection reporting `"00000"`.
+
+Two things work everywhere:
+
+```clojure
+;; the statement handle
+(let [stmt (pdo/prepare conn sql)]
+  (try (pdo/execute stmt) (catch \PDOException _e nil))
+  (pdo/error-code stmt))
+
+;; or the exception, which always carries it
+(try
+  (pdo/exec conn sql)
+  (catch \PDOException e (php/-> e (getCode))))
+```
+
+Note also that **any** successful PDO call clears the error state - including
+`pdo/get-attribute`. Read the error before you do anything else with the handle.
+
 ## Method I want isn't wrapped
 
 Check `README.md`'s API tables first - the PDO surface is fully wrapped, so the

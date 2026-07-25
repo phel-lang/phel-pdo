@@ -48,6 +48,45 @@ vendor/bin/phel test tests/pdo_test.phel
 > [!NOTE]
 > The Phel test runner has no `--filter`. To narrow execution, edit the file or copy the test you care about into a scratch file.
 
+### Running against MySQL and PostgreSQL
+
+The suite defaults to `sqlite::memory:`, so plain `composer test` needs no server.
+Point `PHEL_PDO_DSN` elsewhere to run the *same* tests against another driver:
+
+```bash
+docker run -d --name phelpdo-mysql -e MYSQL_ROOT_PASSWORD=root \
+  -e MYSQL_DATABASE=phel_pdo_test -p 33306:3306 mysql:8
+
+PHEL_PDO_DSN="mysql:host=127.0.0.1;port=33306;dbname=phel_pdo_test" \
+PHEL_PDO_USER=root PHEL_PDO_PASS=root composer test
+```
+
+```bash
+docker run -d --name phelpdo-pg -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=phel_pdo_test -p 55432:5432 postgres:16
+
+PHEL_PDO_DSN="pgsql:host=127.0.0.1;port=55432;dbname=phel_pdo_test" \
+PHEL_PDO_USER=postgres PHEL_PDO_PASS=postgres composer test
+```
+
+CI runs all three. Worth doing locally for anything touching params, quoting,
+error reporting or cursors - SQLite is lenient in ways the others are not.
+
+**Writing driver-portable tests**
+
+- Get DDL from `autoincrement-ddl`; never hard-code `autoincrement`.
+- Give every column a type. SQLite accepts `create table t2 (a, b)`; PostgreSQL
+  does not.
+- SQLite ignores `varchar(n)` limits. PostgreSQL enforces them, so size columns
+  for the longest value the test inserts.
+- NULL-safe comparison against a placeholder is spelled three ways - use
+  `null-safe-eq`.
+- Driver-specific expectations branch inline with a comment saying *why*; the
+  Phel runner has no skip mechanism. Never leave a bare driver check unexplained.
+- Reading an attribute is itself a successful PDO call and **clears the
+  connection's error state**. Resolve `(driver conn)` *before* the statement whose
+  error you mean to assert on.
+
 ## Benchmarking
 
 Row shaping is the one hot path in the library - every fetched cell crosses the
