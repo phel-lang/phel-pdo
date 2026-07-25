@@ -1,6 +1,6 @@
 (ns phel.pdo)
 
-(defstruct connection [pdo])
+(defstruct connection [pdo owned state])
 
 (declare statement?)
 
@@ -21,12 +21,20 @@
     (connection? handle) (handle :pdo)
     (bad-handle handle "a connection or statement handle")))
 
+(defn ^bool closed?
+  "True once close has been called on this connection"
+  [conn]
+  (and (connection? conn)
+       (get (deref (conn :state)) :closed false)))
+
 (defn- conn-pdo
   "The raw \\PDO behind a connection struct, for the connection-only wrappers."
   [conn]
-  (if (connection? conn)
-    (conn :pdo)
-    (bad-handle conn "a connection handle")))
+  (cond
+    (not (connection? conn)) (bad-handle conn "a connection handle")
+    (closed? conn) (throw (php/new \InvalidArgumentException
+                                   "phel.pdo: connection is closed"))
+    (conn :pdo)))
 
 (defn- options->php
   "Builds a PHP array from a Phel options map. Unlike phel->php it preserves
@@ -49,7 +57,9 @@
   "Connect database and return connection object.
   Throws a PDOException if the attempt to connect to the requested database fails."
   [dsn & [username password options]]
-  (let [conn (connection (php/new \PDO dsn username password (options->php (or options {}))))]
+  (let [conn (connection (php/new \PDO dsn username password (options->php (or options {})))
+                         true
+                         (atom {:closed false}))]
     (set-attribute conn \PDO/ATTR_ERRMODE \PDO/ERRMODE_EXCEPTION)
     conn))
 
@@ -61,7 +71,7 @@
   [pdo & [options]]
   (when-not (php/instanceof pdo \PDO)
     (throw (php/new \InvalidArgumentException "from-connection expects a \\PDO instance")))
-  (let [conn (connection pdo)]
+  (let [conn (connection pdo false (atom {:closed false}))]
     (when (get options :apply-defaults)
       (set-attribute conn \PDO/ATTR_ERRMODE \PDO/ERRMODE_EXCEPTION))
     conn))
@@ -457,6 +467,39 @@
            (catch \Throwable e#
              (rollback conn#)
              (throw e#)))))))
+
+(defn close
+  "Closes a connection opened by connect: rolls back an open transaction, then
+  marks the handle closed so any further use raises instead of reaching PDO.
+  Idempotent.
+
+  What this does and does not guarantee: PDO has no close() method, so the
+  underlying connection is released when the last reference to the \\PDO object
+  goes out of scope. close drops phel-pdo's *use* of it immediately and
+  deterministically; the socket goes when the struct does. with-connection scopes
+  the struct so that happens promptly.
+
+  A connection wrapped with from-connection belongs to the host: close marks the
+  phel-pdo wrapper unusable but never rolls back or disturbs the host's \\PDO"
+  [conn]
+  (when-not (connection? conn)
+    (bad-handle conn "a connection handle"))
+  (when-not (closed? conn)
+    (when (and (conn :owned) (php/-> (conn :pdo) (inTransaction)))
+      (php/-> (conn :pdo) (rollback)))
+    (swap! (conn :state) put :closed true))
+  conn)
+
+(defmacro with-connection
+  "Binds name to conn for the duration of body and closes it afterwards, on a
+  normal return and on a throw alike. Returns the last body value"
+  [bindings & body]
+  (let [name (first bindings)
+        init (second bindings)]
+    `(let [~name ~init]
+       (try
+         (do ~@body)
+         (finally (close ~name))))))
 
 (defn get-available-drivers
   "Return a vector of available PDO driver names. PDO::getAvailableDrivers is

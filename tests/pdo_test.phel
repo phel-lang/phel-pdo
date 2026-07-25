@@ -305,6 +305,71 @@
   (let [stmt (pdo/query *conn* "select * from t1")]
     (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}] (pdo/fetch-all stmt)))))
 
+;; --------------------
+;; Connection lifecycle
+;; --------------------
+
+(deftest close-marks-the-connection-closed
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (is (= false (pdo/closed? conn)))
+    (pdo/close conn)
+    (is (= true (pdo/closed? conn)))))
+
+(deftest close-is-idempotent
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (pdo/close conn)
+    (pdo/close conn)
+    (is (= true (pdo/closed? conn)))))
+
+(deftest using-a-closed-connection-raises-clearly
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (pdo/close conn)
+    (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/exec conn "select 1")))))
+    (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/query conn "select 1")))))
+    (is (php/str_contains (caught-message (fn [] (pdo/exec conn "select 1"))) "closed"))))
+
+(deftest close-rolls-back-an-open-transaction
+  (let [conn (pdo/connect "sqlite::memory:")]
+    (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))")
+    (pdo/begin conn)
+    (pdo/insert conn :t1 {:name "phel"})
+    (pdo/close conn)
+    (testing "an explicit rollback beats relying on driver-specific implicit behaviour"
+             (is (= true (pdo/closed? conn))))))
+
+(deftest close-does-not-touch-a-borrowed-connection
+  (let [raw  (php/new \PDO "sqlite::memory:")
+        conn (pdo/from-connection raw)]
+    (php/-> raw (exec "create table t1 (id integer)"))
+    (pdo/close conn)
+    (testing "the wrapper is unusable but the host's PDO still works"
+             (is (= true (pdo/closed? conn)))
+             (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/exec conn "select 1")))))
+             (is (= 0 (php/-> raw (exec "insert into t1 (id) select 1 where 1 = 2")))))))
+
+(deftest with-connection-returns-the-last-body-value
+  (let [ret (pdo/with-connection [conn (pdo/connect "sqlite::memory:")]
+                                 (pdo/exec conn "create table t1 (id integer)")
+                                 :done)]
+    (is (= :done ret))))
+
+(deftest with-connection-closes-on-normal-return
+  (let [captured (atom nil)]
+    (pdo/with-connection [conn (pdo/connect "sqlite::memory:")]
+                         (reset! captured conn))
+    (is (= true (pdo/closed? (deref captured))))))
+
+(deftest with-connection-closes-on-throw-and-rethrows
+  (let [captured (atom nil)
+        threw    (try
+                   (pdo/with-connection [conn (pdo/connect "sqlite::memory:")]
+                                        (reset! captured conn)
+                                        (throw (php/new \Exception "boom")))
+                   false
+                   (catch \Exception _e true))]
+    (is (= true threw))
+    (is (= true (pdo/closed? (deref captured))))))
+
 ;; ------------
 ;; Bound columns
 ;; ------------

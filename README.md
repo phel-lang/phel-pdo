@@ -63,6 +63,9 @@ All functions live in the `phel.pdo` namespace.
 |---|---|---|
 | `connect` | `(connect dsn & [username password options])` | Open a connection. Throws `PDOException` on failure. Sets `ERRMODE_EXCEPTION` by default. |
 | `from-connection` | `(from-connection pdo & [options])` | Wrap an already-open `\PDO` (e.g. a framework/DBAL connection) as-is. `{:apply-defaults true}` sets `ERRMODE_EXCEPTION`. |
+| `close` | `(close conn)` | Roll back any open transaction and mark the connection unusable. Idempotent. Never disturbs a `from-connection` handle. |
+| `with-connection` | `(with-connection [name init] & body)` | Bind, run `body`, close on return **and** on throw. Returns the last body value. |
+| `closed?` | `(closed? conn)` | `true` once `close` has been called. |
 | `exec` | `(exec conn sql)` | Execute SQL, return number of affected rows. |
 | `query` | `(query conn sql & [params options])` | Run SQL, binding `params` (map by name, vector positionally) through a prepared statement. Without params, uses `PDO::query`. `options` takes `{:fetch-mode …}`. |
 | `prepare` | `(prepare conn sql & [options])` | Prepare a statement for later `execute`. |

@@ -17,9 +17,28 @@ src/pdo/statement.phel    (in-ns phel.pdo)     statement-side wrappers
 ## The two structs
 
 ```clojure
-(defstruct connection [pdo])    ; wraps \PDO
-(defstruct statement  [stmt])   ; wraps \PDOStatement
+(defstruct connection [pdo owned state])   ; wraps \PDO
+(defstruct statement  [stmt bindings])     ; wraps \PDOStatement
 ```
+
+- `owned` - `true` for a connection `connect` opened, `false` for one
+  `from-connection` borrowed. `close` never disturbs a borrowed handle.
+- `state` - an atom holding `{:closed bool}`. It has to be an atom rather than a
+  plain field: `close` must invalidate *every* reference to the connection, and a
+  new struct returned from `close` would leave the caller's binding pointing at
+  the old one.
+- `bindings` - column → atom, populated by `bind-column`. The struct itself stays
+  immutable; `bind-column` returns a new statement, and the caller's atoms are the
+  only mutable cells.
+
+### What `close` can and cannot promise
+
+PDO has no `close()`. The connection is released when the last reference to the
+`\PDO` object goes out of scope. So `close` drops phel-pdo's *use* of it
+immediately and deterministically - further calls raise - while the socket itself
+goes when the struct does. `with-connection` scopes the struct so that happens
+promptly. The docstring says exactly this; a `close` that quietly promises more
+would be worse than none.
 
 Field access is plain keyword lookup (`(conn :pdo)`, `(stmt :stmt)`). The PHP boundary is always crossed inside the wrapper:
 

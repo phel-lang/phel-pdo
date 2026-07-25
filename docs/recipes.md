@@ -22,6 +22,39 @@ phel-pdo never closes a connection it did not open:
 (def conn (pdo/from-connection php-pdo {:apply-defaults true}))
 ```
 
+## Connection lifecycle
+
+For a script or a scoped unit of work, let `with-connection` own the connection:
+
+```clojure
+(pdo/with-connection [conn (pdo/connect "sqlite:app.db")]
+  (pdo/insert conn :t1 {:name "phel"})
+  (pdo/select conn "select * from t1"))
+;; closed on the way out - on a normal return and on a throw alike
+```
+
+`pdo/close` does it manually, and is idempotent. Using a closed connection raises
+rather than reaching PDO:
+
+```clojure
+(pdo/close conn)
+(pdo/closed? conn)        ; => true
+(pdo/exec conn "select 1") ; InvalidArgumentException: connection is closed
+```
+
+`close` rolls back an open transaction first, rather than leaving it to
+driver-specific implicit behaviour - MySQL and PostgreSQL disagree on what
+happens to an open transaction at disconnect.
+
+A connection you wrapped with `pdo/from-connection` belongs to the host.
+`close` marks the phel-pdo wrapper unusable but never rolls back or otherwise
+disturbs the host's `\PDO`.
+
+> [!NOTE]
+> PDO has no `close()` method. `close` ends phel-pdo's use of the connection
+> deterministically; the underlying socket is released when the last reference to
+> the `\PDO` object drops, which is what scoping it with `with-connection` gets you.
+
 ## Bound columns
 
 PDO's `FETCH_BOUND` writes each fetched column straight into a variable. Phel has
