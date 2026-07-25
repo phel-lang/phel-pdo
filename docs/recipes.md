@@ -22,9 +22,49 @@ phel-pdo never closes a connection it did not open:
 (def conn (pdo/from-connection php-pdo {:apply-defaults true}))
 ```
 
+## One-shot reads
+
+Most reads want rows, not a statement. Three helpers go straight there:
+
+```clojure
+(pdo/select conn "select * from users where age > ?" [18])
+;; => [{:id 1, :name "phel"} {:id 2, :name "php"}]     ; [] when no rows
+
+(pdo/select-one conn "select * from users where id = ?" [1])
+;; => {:id 1, :name "phel"}                            ; nil when no rows
+
+(pdo/select-value conn "select count(*) from users")
+;; => 42                                               ; nil when no rows
+```
+
+`select-value` is the one you reach for most: scalar reads - `count(*)`,
+`max(id)`, an existence check - otherwise cost four calls and a keyword lookup.
+
+Both `select-one` and `select-value` return `nil` for "no rows", which is also
+what a SQL `NULL` column gives. When you need to tell them apart, `select-value`
+takes a sentinel:
+
+```clojure
+(pdo/select-value conn "select nickname from users where id = ?" [1] :missing)
+;; => :missing   ; no such user
+;; => nil        ; user exists, nickname is NULL
+```
+
+`select` forwards its options to `pdo/fetch-all`, so the column-oriented shape is
+available here too:
+
+```clojure
+(pdo/select conn "select id, name from big" nil {:as :rows})
+;; => {:cols [:id :name] :rows [[1 "phel"] ...]}
+```
+
+All three release the cursor before returning, and none of them rewrites your
+SQL - `select-one` fetches one row rather than appending a `LIMIT`.
+
 ## One-off queries with params
 
-`pdo/query` binds params for you, so a single read is a single call:
+When you want the statement itself - to bind more, to stream, to check
+`row-count` - `pdo/query` binds params and hands it back:
 
 ```clojure
 (-> (pdo/query conn "select * from t1 where id = ?" [1])
