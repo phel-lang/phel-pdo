@@ -19,10 +19,20 @@
     (row->map row)))
 
 (defn fetch-column
-  "Returns a single column from the next row of a result set. Returns false when
-  the cursor is exhausted (PDO's sentinel); a nil means the column was SQL NULL"
-  [stmt & [column]]
-  (php/-> (stmt-handle stmt) (fetchColumn (or column 0))))
+  "Returns a single 0-indexed column from the next row of a result set, or not-found
+  (nil by default) once the cursor is exhausted. A SQL NULL column reads back as nil,
+  so pass a distinct not-found value when you need to tell the two apart"
+  [stmt & [column not-found]]
+  (let [row (php/-> (stmt-handle stmt) (fetch \PDO/FETCH_NUM))
+        idx (or column 0)]
+    (cond
+      ;; PDO signals an exhausted cursor with false; a row is always an array,
+      ;; so this stays unambiguous even for a column holding a real false.
+      (php/=== row false) not-found
+      (php/array_key_exists idx row) (php->phel (php/aget row idx))
+      (throw (php/new \InvalidArgumentException
+                      (str "fetch-column: column index " idx " out of range, row has "
+                           (php/count row) " column(s)"))))))
 
 (defn fetch-all
   "Fetches the remaining rows from a result set as a seq of maps"

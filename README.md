@@ -82,7 +82,7 @@ Returned by `pdo/query` and `pdo/prepare`.
 | `execute` | `(execute stmt & [params])` | Run a prepared statement. Returns the statement so it threads through `->` / `let`. |
 | `fetch` | `(fetch stmt)` | Next row as a map, or `nil` if exhausted. |
 | `fetch-all` | `(fetch-all stmt)` | Remaining rows as a vector of maps. |
-| `fetch-column` | `(fetch-column stmt & [column])` | Single column from the next row. |
+| `fetch-column` | `(fetch-column stmt & [column not-found])` | Single 0-indexed column from the next row, or `not-found` (default `nil`) once exhausted. A SQL `NULL` reads back as `nil`, so pass a distinct `not-found` to tell the two apart. |
 | `fetch-object` | `(fetch-object stmt & [class-name ctor-args])` | Next row as an object (`stdClass` by default, or an instance of `class-name`), or `nil` if exhausted. |
 | `statement-seq` | `(statement-seq stmt)` | Lazy seq of the remaining rows as maps, fetched one at a time. |
 | `bind-value` | `(bind-value stmt column value & [type])` | Bind a value to a placeholder. Returns the statement. |
