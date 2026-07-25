@@ -75,18 +75,43 @@ Reuse a statement across many parameter sets:
 ;; => nil      ; a row, whose column was NULL
 ```
 
-## Binding values explicitly
+## Param types
 
-`bind-value` is for when you want to control the PDO param type (e.g. `PARAM_INT` vs the default `PARAM_STR`):
+Types are inferred from the value, so you rarely need to say anything:
+
+| Phel value | PDO type |
+|---|---|
+| `nil` | `PARAM_NULL` |
+| `true` / `false` | `PARAM_BOOL` |
+| an integer | `PARAM_INT` |
+| everything else (strings, floats) | `PARAM_STR` |
+
+This applies to `bind-value`, `bind-param` and the params you hand to `execute`
+alike. Floats stay `PARAM_STR` - PDO has no `PARAM_FLOAT`, and `PARAM_STR` is the
+lossless choice for them.
+
+Inference matters most under **emulated prepares**, which is PDO's default for
+MySQL. There PDO interpolates the value itself, and `PARAM_STR` quotes it:
+
+```sql
+select * from t1 limit '10'   -- syntax error on MySQL
+where id = '10'               -- valid, but defeats an integer index
+```
+
+### Overriding
+
+Pass an explicit type when you know better than the inference - a numeric string
+that must stay a string, say, or a `PARAM_LOB` stream:
 
 ```clojure
-(-> (pdo/prepare conn "select * from t1 where id = :id")
-    (pdo/bind-value :id 1 \PDO/PARAM_INT)
+(-> (pdo/prepare conn "select * from t1 where zip = :zip")
+    (pdo/bind-value :zip "01234" \PDO/PARAM_STR)
     (pdo/execute)
     (pdo/fetch))
 ```
 
-Available types: `\PDO/PARAM_STR` (default), `\PDO/PARAM_INT`, `\PDO/PARAM_BOOL`, `\PDO/PARAM_NULL`, `\PDO/PARAM_LOB`.
+Available types: `\PDO/PARAM_STR`, `\PDO/PARAM_INT`, `\PDO/PARAM_BOOL`,
+`\PDO/PARAM_NULL`, `\PDO/PARAM_LOB`.
 
 ## Transactions
 
