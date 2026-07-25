@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-25
+
 ### Breaking changes
 
 - **`pdo/query` takes params as its second argument.** `(pdo/query conn sql [1])` and `(pdo/query conn sql {:id 1})` now bind through a prepared statement; previously the second argument was a fetch mode, so passing params raised a `TypeError`. The fetch mode moves to an options map. It was nearly inert there anyway - `pdo/fetch` and `pdo/fetch-all` request `FETCH_ASSOC` regardless, so it only ever affected native iteration. *Migration:* `(pdo/query conn sql \PDO/FETCH_NUM)` becomes `(pdo/query conn sql nil {:fetch-mode \PDO/FETCH_NUM})` ([#41]).
@@ -157,7 +159,8 @@ The three BC entries for this release are listed under **Breaking changes** abov
 
 - Minimum functionality.
 
-[Unreleased]: https://github.com/phel-lang/phel-pdo/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/phel-lang/phel-pdo/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/phel-lang/phel-pdo/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/phel-lang/phel-pdo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/phel-lang/phel-pdo/compare/v0.0.8...v0.1.0
 [0.0.8]: https://github.com/phel-lang/phel-pdo/compare/v0.0.7...v0.0.8
