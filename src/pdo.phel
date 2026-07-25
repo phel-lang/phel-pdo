@@ -80,11 +80,21 @@
   (statement
    (php/-> (conn-pdo conn) (prepare stmt (options->php (or options {}))))))
 
+(declare set-fetch-mode)
+
 (defn query
-  "Prepares and executes an SQL statement without placeholders"
-  [conn stmt & [fetch-mode]]
-  (statement
-   (php/-> (conn-pdo conn) (query stmt (or fetch-mode \PDO/FETCH_ASSOC)))))
+  "Prepares and executes SQL and returns a statement. With params it goes through a
+  prepared statement - a map binds by name, a vector positionally - so values are
+  bound, never interpolated. Without params it uses PDO::query directly.
+  Options: {:fetch-mode \\PDO/FETCH_...} sets the statement's native fetch mode"
+  [conn sql & [params options]]
+  (if (empty? params)
+    (statement
+     (php/-> (conn-pdo conn) (query sql (get options :fetch-mode \PDO/FETCH_ASSOC))))
+    (let [stmt (prepare conn sql)]
+      (when-let [mode (get options :fetch-mode)]
+        (set-fetch-mode stmt mode))
+      (execute stmt params))))
 
 (defn ^bool begin
   "Initiates a transaction"

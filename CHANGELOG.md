@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking changes
 
+- **`pdo/query` takes params as its second argument.** `(pdo/query conn sql [1])` and `(pdo/query conn sql {:id 1})` now bind through a prepared statement; previously the second argument was a fetch mode, so passing params raised a `TypeError`. The fetch mode moves to an options map. It was nearly inert there anyway - `pdo/fetch` and `pdo/fetch-all` request `FETCH_ASSOC` regardless, so it only ever affected native iteration. *Migration:* `(pdo/query conn sql \PDO/FETCH_NUM)` becomes `(pdo/query conn sql nil {:fetch-mode \PDO/FETCH_NUM})` ([#41]).
 - **`pdo/fetch-column` returns `nil` on an exhausted cursor**, not PHP's `false` sentinel, matching `pdo/fetch` and every other reader. It also gained a `not-found` argument - `(pdo/fetch-column stmt 0 :eof)` - because a SQL `NULL` column is `nil` too, and the two were previously indistinguishable. Internally it now reads through `fetch(FETCH_NUM)` rather than `fetchColumn`, so a column holding a real boolean `false` (Postgres `bool`) is no longer mistaken for end-of-rows. *Migration:* replace `(= false (pdo/fetch-column s))` with `(nil? ...)`, or pass a sentinel ([#35]).
 
 ### Changed
@@ -182,3 +183,4 @@ The three BC entries for this release are listed under **Breaking changes** abov
 [#38]: https://github.com/phel-lang/phel-pdo/issues/38
 [#39]: https://github.com/phel-lang/phel-pdo/issues/39
 [#40]: https://github.com/phel-lang/phel-pdo/issues/40
+[#41]: https://github.com/phel-lang/phel-pdo/issues/41

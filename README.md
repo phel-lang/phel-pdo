@@ -19,15 +19,19 @@ Requires PHP `>=8.4` and `phel-lang/phel-lang ^0.41`.
 (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))")
 (pdo/exec conn "insert into t1 (name) values ('phel'), ('php')")
 
-;; Raw query
-(-> (pdo/query conn "select * from t1 where id = 1")
+;; Query with params - bound through a prepared statement, never interpolated
+(-> (pdo/query conn "select * from t1 where id = ?" [1])
     (pdo/fetch))
 ;; => {:id 1, :name "phel"}
 
-;; Prepared statement
-(-> (pdo/prepare conn "select * from t1 where id = :id")
-    (pdo/execute {:id 1})
+;; Named params work too
+(-> (pdo/query conn "select * from t1 where id = :id" {:id 1})
     (pdo/fetch))
+;; => {:id 1, :name "phel"}
+
+;; Reuse a prepared statement across executions
+(let [stmt (pdo/prepare conn "select * from t1 where id = :id")]
+  (-> stmt (pdo/execute {:id 1}) (pdo/fetch)))
 ;; => {:id 1, :name "phel"}
 
 ;; Insert a row from a map
@@ -60,7 +64,7 @@ All functions live in the `phel.pdo` namespace.
 | `connect` | `(connect dsn & [username password options])` | Open a connection. Throws `PDOException` on failure. Sets `ERRMODE_EXCEPTION` by default. |
 | `from-connection` | `(from-connection pdo & [options])` | Wrap an already-open `\PDO` (e.g. a framework/DBAL connection) as-is. `{:apply-defaults true}` sets `ERRMODE_EXCEPTION`. |
 | `exec` | `(exec conn sql)` | Execute SQL, return number of affected rows. |
-| `query` | `(query conn sql & [fetch-mode])` | Run SQL without placeholders, return a statement. |
+| `query` | `(query conn sql & [params options])` | Run SQL, binding `params` (map by name, vector positionally) through a prepared statement. Without params, uses `PDO::query`. `options` takes `{:fetch-mode …}`. |
 | `prepare` | `(prepare conn sql & [options])` | Prepare a statement for later `execute`. |
 | `insert` | `(insert conn table row)` | Insert a non-empty `row` map into `table` via a prepared statement and return the new `last-insert-id` (string). Identifiers must match `[A-Za-z_][A-Za-z0-9_]*`. |
 | `quote` | `(quote conn string & [type])` | Quote a string for safe embedding in SQL. |
