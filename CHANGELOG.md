@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-25
+
 ### Breaking changes
 
 Three call-site changes since `0.1.0`. Each corrects behaviour that was wrong, not
@@ -126,7 +128,8 @@ The three BC entries for this release are listed under **Breaking changes** abov
 
 - Minimum functionality.
 
-[Unreleased]: https://github.com/phel-lang/phel-pdo/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/phel-lang/phel-pdo/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/phel-lang/phel-pdo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/phel-lang/phel-pdo/compare/v0.0.8...v0.1.0
 [0.0.8]: https://github.com/phel-lang/phel-pdo/compare/v0.0.7...v0.0.8
 [0.0.7]: https://github.com/phel-lang/phel-pdo/compare/v0.0.6...v0.0.7
