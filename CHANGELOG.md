@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Passing something that is not a connection or statement to `pdo/get-attribute`, `pdo/set-attribute`, `pdo/error-code` or `pdo/error-info` now raises an `InvalidArgumentException` naming what was expected, instead of an opaque PHP `Error` from inside PDO. The connection-only and statement-only wrappers are guarded the same way, and handing a raw `\PDO` to any of them points you at `pdo/from-connection` ([#36]).
+
 ## [0.2.0] - 2026-07-25
 
 ### Breaking changes
@@ -156,3 +160,4 @@ The three BC entries for this release are listed under **Breaking changes** abov
 [#17]: https://github.com/phel-lang/phel-pdo/issues/17
 [#20]: https://github.com/phel-lang/phel-pdo/issues/20
 [#21]: https://github.com/phel-lang/phel-pdo/issues/21
+[#36]: https://github.com/phel-lang/phel-pdo/issues/36

@@ -4,10 +4,29 @@
 
 (declare statement?)
 
+(defn- bad-handle
+  "Raises a caller-facing error for a value that is not the expected phel-pdo handle."
+  [handle expected]
+  (throw (php/new \InvalidArgumentException
+                  (str "phel.pdo: expected " expected ", got " (php/get_debug_type handle)
+                       (if (php/instanceof handle \PDO)
+                         " - wrap it first with (pdo/from-connection pdo)"
+                         "")))))
+
 (defn- handle-target
   "The raw PDO handle behind a connection or statement struct."
   [handle]
-  (if (statement? handle) (handle :stmt) (handle :pdo)))
+  (cond
+    (statement? handle) (handle :stmt)
+    (connection? handle) (handle :pdo)
+    (bad-handle handle "a connection or statement handle")))
+
+(defn- conn-pdo
+  "The raw \\PDO behind a connection struct, for the connection-only wrappers."
+  [conn]
+  (if (connection? conn)
+    (conn :pdo)
+    (bad-handle conn "a connection handle")))
 
 (defn- options->php
   "Builds a PHP array from a Phel options map. Unlike phel->php it preserves
@@ -50,7 +69,7 @@
 (defn ^int exec
   "Execute an SQL statement and return the number of affected rows"
   [conn stmt]
-  (php/-> (conn :pdo) (exec stmt)))
+  (php/-> (conn-pdo conn) (exec stmt)))
 
 (declare statement)
 (declare execute)
@@ -59,40 +78,40 @@
   "Prepares a statement for execution and returns a statement object"
   [conn stmt & [options]]
   (statement
-   (php/-> (conn :pdo) (prepare stmt (options->php (or options {}))))))
+   (php/-> (conn-pdo conn) (prepare stmt (options->php (or options {}))))))
 
 (defn query
   "Prepares and executes an SQL statement without placeholders"
   [conn stmt & [fetch-mode]]
   (statement
-   (php/-> (conn :pdo) (query stmt (or fetch-mode \PDO/FETCH_ASSOC)))))
+   (php/-> (conn-pdo conn) (query stmt (or fetch-mode \PDO/FETCH_ASSOC)))))
 
 (defn ^bool begin
   "Initiates a transaction"
   [conn]
-  (php/-> (conn :pdo) (beginTransaction)))
+  (php/-> (conn-pdo conn) (beginTransaction)))
 
 (defn ^bool rollback
   "Rolls back a transaction"
   [conn]
-  (php/-> (conn :pdo) (rollback)))
+  (php/-> (conn-pdo conn) (rollback)))
 
 (defn ^bool commit
   "Commits a transaction"
   [conn]
-  (php/-> (conn :pdo) (commit)))
+  (php/-> (conn-pdo conn) (commit)))
 
 (defn ^string quote
   "Quotes a string for use in a query"
   [conn string & [type]]
-  (php/-> (conn :pdo) (quote string (or type \PDO/PARAM_STR))))
+  (php/-> (conn-pdo conn) (quote string (or type \PDO/PARAM_STR))))
 
 (defn ^string last-insert-id
   "Returns the ID of the last inserted row or sequence value, as a string (as PDO
   reports it). Returning the raw string is lossless for big integers and named
   sequences; coerce with php/intval at the call site when you need a number"
   [conn]
-  (php/-> (conn :pdo) (lastInsertId)))
+  (php/-> (conn-pdo conn) (lastInsertId)))
 
 (defn- check-ident [s]
   (if (= 1 (php/preg_match "/^[A-Za-z_][A-Za-z0-9_]*$/" s))
@@ -135,7 +154,7 @@
 (defn ^bool in-transaction
   "Checks if inside a transaction"
   [conn]
-  (php/-> (conn :pdo) (inTransaction)))
+  (php/-> (conn-pdo conn) (inTransaction)))
 
 (defmacro with-transaction
   "Runs body inside a transaction on conn: commits on success and returns the last
