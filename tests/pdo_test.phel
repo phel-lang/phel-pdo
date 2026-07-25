@@ -83,6 +83,58 @@
 (deftest quote-escapes-single-quotes
   (is (= "'I''m fine.'" (pdo/quote *conn* "I'm fine."))))
 
+;; -----------------
+;; Handle validation
+;; -----------------
+
+(defn- caught
+  "The exception f throws, or nil when it returns normally."
+  [f]
+  (try
+    (do (f) nil)
+    (catch \Throwable e e)))
+
+(defn- caught-class [f]
+  (when-let [e (caught f)] (php/get_class e)))
+
+(defn- caught-message [f]
+  (when-let [e (caught f)] (php/-> e (getMessage))))
+
+(deftest dual-handle-fns-reject-non-handle
+  (testing "a plain map is not a connection or statement"
+           (is (= "InvalidArgumentException"
+                  (caught-class (fn [] (pdo/get-attribute {:foo 1} \PDO/ATTR_ERRMODE)))))
+           (is (= "InvalidArgumentException"
+                  (caught-class (fn [] (pdo/set-attribute {:foo 1} \PDO/ATTR_ERRMODE 0)))))
+           (is (= "InvalidArgumentException"
+                  (caught-class (fn [] (pdo/error-code {:foo 1})))))
+           (is (= "InvalidArgumentException"
+                  (caught-class (fn [] (pdo/error-info {:foo 1})))))))
+
+(deftest dual-handle-fns-reject-raw-pdo-with-hint
+  (let [raw (php/new \PDO "sqlite::memory:")]
+    (is (= "InvalidArgumentException"
+           (caught-class (fn [] (pdo/error-code raw)))))
+    (is (php/str_contains (caught-message (fn [] (pdo/error-code raw))) "from-connection")
+        "the message should point at from-connection")))
+
+(deftest connection-fns-reject-statement-handle
+  (let [stmt (pdo/query *conn* "select 1")]
+    (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/begin stmt)))))
+    (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/exec stmt "select 1")))))
+    (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/last-insert-id stmt)))))
+    (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/prepare stmt "select 1")))))))
+
+(deftest statement-fns-reject-connection-handle
+  (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/fetch *conn*)))))
+  (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/execute *conn*)))))
+  (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/row-count *conn*))))))
+
+(deftest valid-handles-still-work
+  (testing "the guards do not disturb the happy path"
+           (is (= "00000" (pdo/error-code *conn*)))
+           (is (= "00000" (pdo/error-code (pdo/query *conn* "select 1"))))))
+
 ;; ----
 ;; Exec
 ;; ----
