@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **phel-pdo was unusable as a dependency.** `(:require phel\pdo)` in a consuming project failed with `Cannot resolve symbol 'pdo/connect'`: Phel discovers a dependency's namespaces through its `phel-config.php`, and that file was removed in `0.1.0` as "no special config needed". The library only ever worked inside its own checkout, where `src/` is already the project's source dir, so neither the test suite nor CI could see it. Affected `0.1.0`, `0.2.0` and `0.3.0`. This is a regression of issue [#1], fixed once in `0.0.5` the same way. A `Consumer` CI workflow now installs the package from a path repository and requires it from a separate project, so it cannot happen a third time ([#68]).
+
 ## [0.3.0] - 2026-07-25
 
 ### Breaking changes
@@ -203,3 +207,4 @@ The three BC entries for this release are listed under **Breaking changes** abov
 [#47]: https://github.com/phel-lang/phel-pdo/issues/47
 [#48]: https://github.com/phel-lang/phel-pdo/issues/48
 [#56]: https://github.com/phel-lang/phel-pdo/issues/56
+[#68]: https://github.com/phel-lang/phel-pdo/issues/68

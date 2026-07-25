@@ -10,7 +10,7 @@ src/pdo/statement.phel statement-side wrappers (in-ns phel.pdo)
 tests/pdo_test.phel    deftest per behaviour; driver-parametric (PHEL_PDO_DSN), sqlite by default
 bench/                 fetch_all.phel + insert_loop.phel, reproducible perf numbers
 release.sh             release automation (CHANGELOG → tag → GitHub release)
-phel-config.php        not used (≥ phel 0.37, library autoload via composer.json)
+phel-config.php        REQUIRED for consumers - phel finds a dependency's namespaces through it
 ```
 
 Two structs, two files:
