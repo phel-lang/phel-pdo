@@ -1,0 +1,78 @@
+# Installs phel-pdo the way a user does and requires it from a separate project.
+#
+# The repo's own suite cannot catch a packaging fault: inside this checkout
+# `src/` is already the project's source dir, so `phel.pdo` resolves whether or
+# not the package is consumable. Issue #1 was exactly this - "Cannot resolve
+# symbol 'pdo/connect'" - fixed in 0.0.5 by adding phel-config.php and
+# reintroduced in 0.1.0 by removing it. Shipped broken for three releases
+# because nothing tested the package from the outside.
+name: Consumer
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  consume:
+    name: install as a dependency and require it
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        path: phel-pdo
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: mbstring, pdo_sqlite
+
+    - name: Create a consumer project
+      run: |
+        mkdir -p consumer/src
+        cd consumer
+        cat > composer.json <<'JSON'
+        {
+          "name": "consumer/smoke",
+          "minimum-stability": "dev",
+          "prefer-stable": true,
+          "repositories": [{ "type": "path", "url": "../phel-pdo", "options": { "symlink": false } }],
+          "require": { "phel-lang/phel-pdo": "*" }
+        }
+        JSON
+        cat > phel-config.php <<'PHP'
+        <?php
+        declare(strict_types=1);
+        use Phel\Config\PhelConfig;
+        return PhelConfig::forProject(mainNamespace: 'consumer.main');
+        PHP
+        cat > src/main.phel <<'PHEL'
+        (ns consumer\main (:require phel\pdo))
+
+        (def conn (pdo/connect "sqlite::memory:"))
+        (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(64))")
+        (pdo/insert conn :t1 {:name "phel"})
+
+        (when-not (= [{:id 1, :name "phel"}] (pdo/select conn "select * from t1"))
+          (throw (php/new \RuntimeException "select returned unexpected rows")))
+        (when-not (= 1 (pdo/select-value conn "select count(*) from t1"))
+          (throw (php/new \RuntimeException "select-value returned unexpected value")))
+
+        (pdo/close conn)
+        (println "consumer OK")
+        PHEL
+
+    - name: Install phel-pdo as a dependency
+      working-directory: consumer
+      run: composer install --prefer-dist --no-progress
+
+    - name: Require and use it
+      working-directory: consumer
+      run: vendor/bin/phel run src/main.phel
