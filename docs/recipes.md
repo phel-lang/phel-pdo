@@ -61,6 +61,20 @@ Reuse a statement across many parameter sets:
 ;; => 3
 ```
 
+`pdo/fetch-column` returns `nil` once the cursor is exhausted, the same as
+`pdo/fetch`. A SQL `NULL` column also reads back as `nil` - when you need to tell
+"no more rows" from "the column was NULL", pass a sentinel:
+
+```clojure
+(-> (pdo/query conn "select name from t1 where id = 999")
+    (pdo/fetch-column 0 :eof))
+;; => :eof     ; no row at all
+
+(-> (pdo/query conn "select name from t1 where name is null")
+    (pdo/fetch-column 0 :eof))
+;; => nil      ; a row, whose column was NULL
+```
+
 ## Binding values explicitly
 
 `bind-value` is for when you want to control the PDO param type (e.g. `PARAM_INT` vs the default `PARAM_STR`):

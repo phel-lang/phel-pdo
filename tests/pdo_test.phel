@@ -230,6 +230,52 @@
   (let [stmt (pdo/query *conn* "select * from t1")]
     (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}] (pdo/fetch-all stmt)))))
 
+(deftest fetch-column-returns-nil-when-exhausted
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select name from t1 where id = 999")]
+    (is (nil? (pdo/fetch-column stmt)))))
+
+(deftest fetch-column-returns-not-found-sentinel-when-exhausted
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select name from t1 where id = 999")]
+    (is (= :eof (pdo/fetch-column stmt 0 :eof)))))
+
+(deftest fetch-column-returns-nil-for-sql-null
+  (create-t1 *conn*)
+  (pdo/exec *conn* "insert into t1 (name) values (null)")
+  (testing "a NULL column is nil, and stays nil even when a sentinel is supplied"
+           (is (nil? (pdo/fetch-column (pdo/query *conn* "select name from t1") 0)))
+           (is (nil? (pdo/fetch-column (pdo/query *conn* "select name from t1") 0 :eof)))))
+
+(deftest fetch-column-does-not-swallow-falsy-values
+  ;; The old fetchColumn-based implementation could not tell PDO's false sentinel
+  ;; from a real value. Every falsy column must survive the round trip.
+  (is (= 0 (pdo/fetch-column (pdo/query *conn* "select 0"))))
+  (is (= "" (pdo/fetch-column (pdo/query *conn* "select ''"))))
+  (is (= :eof (pdo/fetch-column (pdo/query *conn* "select 0 where 1 = 2") 0 :eof))))
+
+(deftest fetch-column-selects-by-index
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select id, name from t1")]
+    (is (= 1 (pdo/fetch-column stmt 0))))
+  (let [stmt (pdo/query *conn* "select id, name from t1")]
+    (is (= "phel" (pdo/fetch-column stmt 1)))))
+
+(deftest fetch-column-rejects-out-of-range-index
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select name from t1")]
+    (is (= "InvalidArgumentException"
+           (caught-class (fn [] (pdo/fetch-column stmt 9)))))))
+
+(deftest fetch-column-advances-the-cursor
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (let [stmt (pdo/query *conn* "select name from t1")]
+    (is (= "phel" (pdo/fetch-column stmt)))
+    (is (= "php" (pdo/fetch-column stmt)))
+    (is (nil? (pdo/fetch-column stmt)))))
+
 (deftest fetch-object-returns-stdclass-row
   (seed-t1 *conn*)
   (let [stmt (pdo/query *conn* "select * from t1 where id = 1")

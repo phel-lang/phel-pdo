@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking changes
+
+- **`pdo/fetch-column` returns `nil` on an exhausted cursor**, not PHP's `false` sentinel, matching `pdo/fetch` and every other reader. It also gained a `not-found` argument - `(pdo/fetch-column stmt 0 :eof)` - because a SQL `NULL` column is `nil` too, and the two were previously indistinguishable. Internally it now reads through `fetch(FETCH_NUM)` rather than `fetchColumn`, so a column holding a real boolean `false` (Postgres `bool`) is no longer mistaken for end-of-rows. *Migration:* replace `(= false (pdo/fetch-column s))` with `(nil? ...)`, or pass a sentinel ([#35]).
+
 ### Fixed
 
 - Passing something that is not a connection or statement to `pdo/get-attribute`, `pdo/set-attribute`, `pdo/error-code` or `pdo/error-info` now raises an `InvalidArgumentException` naming what was expected, instead of an opaque PHP `Error` from inside PDO. The connection-only and statement-only wrappers are guarded the same way, and handing a raw `\PDO` to any of them points you at `pdo/from-connection` ([#36]).
@@ -160,4 +164,5 @@ The three BC entries for this release are listed under **Breaking changes** abov
 [#17]: https://github.com/phel-lang/phel-pdo/issues/17
 [#20]: https://github.com/phel-lang/phel-pdo/issues/20
 [#21]: https://github.com/phel-lang/phel-pdo/issues/21
+[#35]: https://github.com/phel-lang/phel-pdo/issues/35
 [#36]: https://github.com/phel-lang/phel-pdo/issues/36
