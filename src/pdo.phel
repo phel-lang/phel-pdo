@@ -146,6 +146,42 @@
     (-> (prepare conn sql) (execute row))
     (last-insert-id conn)))
 
+(declare fetch)
+(declare fetch-all)
+(declare fetch-column)
+(declare close-cursor)
+
+(defn select
+  "Runs SQL with params and returns every row. Shapes through fetch-all, so options
+  takes the same :as - :maps (default) gives a vector of maps, :rows gives
+  {:cols [...] :rows [[...]]}. Releases the cursor before returning"
+  [conn sql & [params options]]
+  (let [stmt (query conn sql params)
+        rows (fetch-all stmt options)
+        rows (if (map? rows) rows (into [] rows))]
+    (close-cursor stmt)
+    rows))
+
+(defn select-one
+  "Runs SQL with params and returns the first row as a map, or nil when there are
+  none. Releases the cursor before returning - it does not append a LIMIT, since
+  rewriting the caller's SQL is not this wrapper's job"
+  [conn sql & [params]]
+  (let [stmt (query conn sql params)
+        row  (fetch stmt)]
+    (close-cursor stmt)
+    row))
+
+(defn select-value
+  "Runs SQL with params and returns the first column of the first row - the shape of
+  a count/max/exists check. Returns not-found (nil by default) when there are no
+  rows; a SQL NULL column is nil either way. Releases the cursor before returning"
+  [conn sql & [params not-found]]
+  (let [stmt  (query conn sql params)
+        value (fetch-column stmt 0 not-found)]
+    (close-cursor stmt)
+    value))
+
 (defn ^string error-code
   "Fetch the SQLSTATE associated with the last operation on a connection or statement.
   SQLSTATE is a 5-character code (e.g. \"23000\", \"HY000\"), returned as a string"

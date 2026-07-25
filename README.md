@@ -66,6 +66,9 @@ All functions live in the `phel.pdo` namespace.
 | `exec` | `(exec conn sql)` | Execute SQL, return number of affected rows. |
 | `query` | `(query conn sql & [params options])` | Run SQL, binding `params` (map by name, vector positionally) through a prepared statement. Without params, uses `PDO::query`. `options` takes `{:fetch-mode …}`. |
 | `prepare` | `(prepare conn sql & [options])` | Prepare a statement for later `execute`. |
+| `select` | `(select conn sql & [params options])` | Run SQL and return every row. `options` takes `{:as :maps\|:rows}`, as `fetch-all`. |
+| `select-one` | `(select-one conn sql & [params])` | First row as a map, or `nil`. |
+| `select-value` | `(select-value conn sql & [params not-found])` | First column of the first row — `count(*)`, `max(id)`, an existence check. `not-found` (default `nil`) when there are no rows. |
 | `insert` | `(insert conn table row)` | Insert a non-empty `row` map into `table` via a prepared statement and return the new `last-insert-id` (string). Identifiers must match `[A-Za-z_][A-Za-z0-9_]*`. |
 | `quote` | `(quote conn string & [type])` | Quote a string for safe embedding in SQL. |
 | `last-insert-id` | `(last-insert-id conn)` | ID of the last inserted row, as a string (as PDO reports it). |

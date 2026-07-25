@@ -305,6 +305,74 @@
   (let [stmt (pdo/query *conn* "select * from t1")]
     (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}] (pdo/fetch-all stmt)))))
 
+;; ---------------
+;; One-shot reads
+;; ---------------
+
+(deftest select-returns-vector-of-maps
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}]
+         (pdo/select *conn* "select * from t1 order by id"))))
+
+(deftest select-returns-empty-vector-for-no-rows
+  (seed-t1 *conn*)
+  (is (= [] (pdo/select *conn* "select * from t1 where id = ?" [999]))))
+
+(deftest select-binds-params
+  (seed-t1 *conn*)
+  (is (= [{:name "phel"}] (pdo/select *conn* "select name from t1 where id = ?" [1])))
+  (is (= [{:name "phel"}] (pdo/select *conn* "select name from t1 where id = :id" {:id 1}))))
+
+(deftest select-passes-options-to-fetch-all
+  (seed-t1 *conn*)
+  (is (= {:cols [:id :name] :rows [[1 "phel"]]}
+         (pdo/select *conn* "select id, name from t1" nil {:as :rows}))))
+
+(deftest select-one-returns-first-row
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (is (= {:id 1, :name "phel"} (pdo/select-one *conn* "select * from t1 order by id"))))
+
+(deftest select-one-returns-nil-for-no-rows
+  (seed-t1 *conn*)
+  (is (nil? (pdo/select-one *conn* "select * from t1 where id = ?" [999]))))
+
+(deftest select-value-returns-first-column-of-first-row
+  (seed-t1 *conn*)
+  (is (= 1 (pdo/select-value *conn* "select count(*) from t1")))
+  (is (= "phel" (pdo/select-value *conn* "select name from t1 where id = ?" [1]))))
+
+(deftest select-value-returns-nil-for-no-rows
+  (seed-t1 *conn*)
+  (is (nil? (pdo/select-value *conn* "select name from t1 where id = ?" [999]))))
+
+(deftest select-value-supports-a-not-found-sentinel
+  (create-t1 *conn*)
+  (pdo/exec *conn* "insert into t1 (name) values (null)")
+  (testing "no row gives the sentinel; a NULL column still gives nil"
+           (is (= :none (pdo/select-value *conn* "select name from t1 where id = ?" [999] :none)))
+           (is (nil? (pdo/select-value *conn* "select name from t1 where id = ?" [1] :none)))))
+
+(deftest one-shot-reads-bind-params-safely
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (dofor [f :in [pdo/select pdo/select-one pdo/select-value]]
+    (f *conn* "select * from t1 where name = ?" ["'; drop table t1; --"]))
+  (is (= 1 (pdo/select-value *conn* "select count(*) from t1")) "t1 must still exist"))
+
+(deftest one-shot-reads-release-the-cursor
+  ;; select-one and select-value abandon an unread cursor; on drivers with cursor
+  ;; limits a leak there is a real failure mode.
+  (create-t1 *conn*)
+  (dofor [i :range [0 50]] (insert-name *conn* (str "n" i)))
+  (dofor [_ :range [0 50]]
+    (pdo/select-one *conn* "select * from t1 order by id")
+    (pdo/select-value *conn* "select count(*) from t1"))
+  (is (= 50 (pdo/select-value *conn* "select count(*) from t1"))))
+
 (deftest query-without-params-is-unchanged
   (seed-t1 *conn*)
   (is (= {:id 1, :name "phel"} (pdo/fetch (pdo/query *conn* "select * from t1 where id = 1")))))
