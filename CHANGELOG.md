@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`pdo/fetch-column` returns `nil` on an exhausted cursor**, not PHP's `false` sentinel, matching `pdo/fetch` and every other reader. It also gained a `not-found` argument - `(pdo/fetch-column stmt 0 :eof)` - because a SQL `NULL` column is `nil` too, and the two were previously indistinguishable. Internally it now reads through `fetch(FETCH_NUM)` rather than `fetchColumn`, so a column holding a real boolean `false` (Postgres `bool`) is no longer mistaken for end-of-rows. *Migration:* replace `(= false (pdo/fetch-column s))` with `(nil? ...)`, or pass a sentinel ([#35]).
 
+### Changed
+
+- `pdo/fetch-all` and `pdo/statement-seq` compute the result set's column keywords once instead of re-keywording every cell of every row: **2.2x** and **2.5x** faster respectively on 20k rows x 5 columns (2002 ms -> 924 ms, 2090 ms -> 848 ms). No API change; rows come back identical. Drivers that cannot report column metadata fall back to the previous `FETCH_ASSOC` path. `bench/fetch_all.phel` reproduces the numbers ([#39]).
+
 ### Added
 
 - `pdo/with-savepoint` - run a thunk inside a `SAVEPOINT`, releasing it on success or rolling back to it and re-throwing. The primitive behind nested `pdo/with-transaction` ([#37]).
@@ -174,3 +178,4 @@ The three BC entries for this release are listed under **Breaking changes** abov
 [#36]: https://github.com/phel-lang/phel-pdo/issues/36
 [#37]: https://github.com/phel-lang/phel-pdo/issues/37
 [#38]: https://github.com/phel-lang/phel-pdo/issues/38
+[#39]: https://github.com/phel-lang/phel-pdo/issues/39
