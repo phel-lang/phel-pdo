@@ -70,6 +70,9 @@ All functions live in the `phel.pdo` namespace.
 | `select-one` | `(select-one conn sql & [params])` | First row as a map, or `nil`. |
 | `select-value` | `(select-value conn sql & [params not-found])` | First column of the first row — `count(*)`, `max(id)`, an existence check. `not-found` (default `nil`) when there are no rows. |
 | `insert` | `(insert conn table row)` | Insert a non-empty `row` map into `table` via a prepared statement and return the new `last-insert-id` (string). Identifiers must match `[A-Za-z_][A-Za-z0-9_]*`. |
+| `update` | `(update conn table set-map where-map)` | `UPDATE` matched rows, return affected count. Both maps must be non-empty. |
+| `delete` | `(delete conn table where-map)` | `DELETE` matched rows, return affected count. `where-map` must be non-empty. |
+| `insert-many` | `(insert-many conn table rows)` | Insert a seq of same-keyed maps in one multi-`VALUES` statement, return affected count. |
 | `quote` | `(quote conn string & [type])` | Quote a string for safe embedding in SQL. |
 | `last-insert-id` | `(last-insert-id conn)` | ID of the last inserted row, as a string (as PDO reports it). |
 | `begin` / `commit` / `rollback` | `(begin conn)` … | Transaction control. |
