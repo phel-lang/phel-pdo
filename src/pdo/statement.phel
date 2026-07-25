@@ -53,13 +53,48 @@
                       (str "fetch-column: column index " idx " out of range, row has "
                            (php/count row) " column(s)"))))))
 
-(defn fetch-all
-  "Fetches the remaining rows from a result set as a seq of maps"
+(defn column-names
+  "Returns the result set's column names as a vector of keywords, in select order,
+  or nil when the driver cannot report column metadata"
   [stmt]
-  (if-let [ks (column-keywords stmt)]
-    (map (partial num-row->map ks)
-         (or (php/-> (stmt-handle stmt) (fetchAll \PDO/FETCH_NUM)) []))
-    (map row->map (or (php/-> (stmt-handle stmt) (fetchAll \PDO/FETCH_ASSOC)) []))))
+  (column-keywords stmt))
+
+(defn- fetch-num-rows [stmt]
+  (or (php/-> (stmt-handle stmt) (fetchAll \PDO/FETCH_NUM)) []))
+
+(defn- fetch-assoc-rows [stmt]
+  (or (php/-> (stmt-handle stmt) (fetchAll \PDO/FETCH_ASSOC)) []))
+
+(defn- rows-as-maps [stmt ks]
+  (if ks
+    (map (partial num-row->map ks) (fetch-num-rows stmt))
+    (map row->map (fetch-assoc-rows stmt))))
+
+(defn- rows-as-columns
+  "{:cols [...] :rows [[...]]}. Without column metadata the names have to come from
+  the rows themselves, which means an empty result set reports no columns."
+  [stmt ks]
+  (if ks
+    {:cols ks
+     :rows (into [] (map php->phel (fetch-num-rows stmt)))}
+    (let [maps (into [] (map row->map (fetch-assoc-rows stmt)))
+          cols (if (empty? maps) [] (into [] (keys (first maps))))]
+      {:cols cols
+       :rows (into [] (for [m :in maps] (into [] (for [c :in cols] (get m c)))))})))
+
+(defn fetch-all
+  "Fetches the remaining rows from a result set. The :as option picks the shape:
+  :maps (default) gives a seq of maps keyed by column keyword; :rows gives
+  {:cols [...] :rows [[...]]} for column-oriented work - exports, aggregates,
+  anything that does not want a map built per row"
+  [stmt & [options]]
+  (let [as (get options :as :maps)
+        ks (column-keywords stmt)]
+    (case as
+      :maps (rows-as-maps stmt ks)
+      :rows (rows-as-columns stmt ks)
+      (throw (php/new \InvalidArgumentException
+                      (str "fetch-all :as must be :maps or :rows, got " as))))))
 
 (defn- num-row-seq [stmt ks]
   (lazy-seq

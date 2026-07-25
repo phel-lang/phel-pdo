@@ -75,6 +75,33 @@ Reuse a statement across many parameter sets:
 ;; => nil      ; a row, whose column was NULL
 ```
 
+## Large result sets
+
+Building a map per row is the dominant cost of reading a big result set — it is
+~160x the raw `PDO::fetchAll` floor on 20k rows. When you are summing a column,
+writing a CSV, or feeding a chart, you never wanted the maps:
+
+```clojure
+(pdo/fetch-all (pdo/query conn "select id, name from big") {:as :rows})
+;; => {:cols [:id :name]
+;;     :rows [[1 "phel"] [2 "php"] ...]}
+```
+
+On 20k rows × 5 columns that is **868 ms → 172 ms**, about 5x. Column order
+matches the `select` list, and `:cols` is correct even when `:rows` is empty.
+
+Summing one column, without ever building a row map:
+
+```clojure
+(let [{:cols cols, :rows rows} (pdo/fetch-all stmt {:as :rows})
+      i (php/array_search :total (phel->php cols))]
+  (reduce + 0 (map (fn [r] (get r i)) rows)))
+```
+
+For result sets too large to hold at once, `pdo/statement-seq` streams them one
+row at a time. It always yields maps — pair it with `pdo/column-names` if you
+need the column list up front.
+
 ## Param types
 
 Types are inferred from the value, so you rarely need to say anything:

@@ -82,13 +82,14 @@ Returned by `pdo/query` and `pdo/prepare`.
 |---|---|---|
 | `execute` | `(execute stmt & [params])` | Run a prepared statement. A map binds by name, a vector positionally; each param's PDO type is inferred. Returns the statement so it threads through `->` / `let`. |
 | `fetch` | `(fetch stmt)` | Next row as a map, or `nil` if exhausted. |
-| `fetch-all` | `(fetch-all stmt)` | Remaining rows as a vector of maps. |
+| `fetch-all` | `(fetch-all stmt & [options])` | Remaining rows. `{:as :maps}` (default) gives maps keyed by column keyword; `{:as :rows}` gives `{:cols […] :rows [[…]]}` — ~5x faster on large result sets. |
 | `fetch-column` | `(fetch-column stmt & [column not-found])` | Single 0-indexed column from the next row, or `not-found` (default `nil`) once exhausted. A SQL `NULL` reads back as `nil`, so pass a distinct `not-found` to tell the two apart. |
 | `fetch-object` | `(fetch-object stmt & [class-name ctor-args])` | Next row as an object (`stdClass` by default, or an instance of `class-name`), or `nil` if exhausted. |
 | `statement-seq` | `(statement-seq stmt)` | Lazy seq of the remaining rows as maps, fetched one at a time. |
 | `bind-value` | `(bind-value stmt column value & [type])` | Bind a value to a placeholder. `type` defaults to the type inferred from the value. Returns the statement. |
 | `bind-param` | `(bind-param stmt column value & [type])` | Bind a parameter, applied at execution time. Same type inference as `bind-value`. Returns the statement. |
 | `column-count` | `(column-count stmt)` | Number of columns in the result set. |
+| `column-names` | `(column-names stmt)` | Result-set column names as a vector of keywords, in select order, or `nil` if the driver can't report them. |
 | `row-count` | `(row-count stmt)` | Rows affected by the last DML. |
 | `column-meta` | `(column-meta stmt column)` | Metadata map for a 0-indexed column, or `nil` if unavailable. |
 | `close-cursor` | `(close-cursor stmt)` | Free the cursor so the statement can be re-executed. Returns the statement. |
