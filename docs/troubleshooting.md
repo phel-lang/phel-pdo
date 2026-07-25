@@ -95,7 +95,14 @@ PostgreSQL needs the sequence name. The wrapped `pdo/last-insert-id` calls `last
 
 ## Method I want isn't wrapped
 
-Check the "Not implemented yet" block at the bottom of `src/pdo/statement.phel`. The escape hatch is always:
+Check `README.md`'s API tables first - the PDO surface is fully wrapped, so the
+method probably exists under a kebab-case name (`lastInsertId` → `last-insert-id`).
+
+One method has no direct equivalent: `PDOStatement::bindColumn` binds a PHP
+variable by reference, and Phel has no by-reference locals to offer it. Use
+`pdo/bind-column` + `pdo/fetch-bound`, which do the same job with atoms.
+
+For anything genuinely unwrapped, the escape hatch is always:
 
 ```clojure
 (php/-> (conn :pdo)  (someMethod arg1 arg2))

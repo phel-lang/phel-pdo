@@ -106,10 +106,15 @@ Returned by `pdo/query` and `pdo/prepare`.
 | `close-cursor` | `(close-cursor stmt)` | Free the cursor so the statement can be re-executed. Returns the statement. |
 | `set-fetch-mode` | `(set-fetch-mode stmt mode & args)` | Set the statement's default fetch mode (extra args match the mode). Returns the statement. |
 | `next-rowset` | `(next-rowset stmt)` | Advance to the next rowset of a multi-rowset statement; `false` when none remain. |
+| `bind-column` | `(bind-column stmt column target)` | Bind a column (1-based position or name) to an atom, refreshed by `fetch-bound`. Returns a new statement. |
+| `fetch-bound` | `(fetch-bound stmt)` | Fetch the next row, resetting every bound atom. `true` while rows remain, `false` once exhausted. |
 | `debug-dump-params` | `(debug-dump-params stmt)` | Dump prepared statement info as a string. |
 
 > [!NOTE]
 > Unlike `PDOStatement::execute()` (returns `bool`), `pdo/execute` returns the statement itself so it composes with `->`.
+
+> [!NOTE]
+> Every PDO method has a wrapper here. The one that isn't a direct translation is `PDOStatement::bindColumn`, which binds a PHP variable *by reference* — Phel has no by-reference locals, so `pdo/bind-column` binds an atom instead and `pdo/fetch-bound` refreshes it.
 
 ## Development
 

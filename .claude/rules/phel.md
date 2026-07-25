@@ -22,7 +22,7 @@ Return-type tags (`^bool`, `^int`, `^string`) reflect the underlying PDO return 
 
 - `;` inline, `;;` standalone, `;;; ` section header.
 - `#| |#` multiline, `#_` to comment out a form.
-- Keep the "Not implemented yet" block at the bottom of `statement.phel` in sync when wrapping new PDO methods.
+- `statement.phel` ends with the bound-columns section; the PDO surface is fully wrapped, so there is no pending-methods block to keep in sync.
 
 ## Semantics
 

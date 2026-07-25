@@ -31,7 +31,7 @@ There's a step-by-step skill at `.claude/skills/new-wrapper/SKILL.md`. The short
    - Optional args default inside the body via `(or x \PDO/DEFAULT)`.
    - Mutators return the wrapped struct; readers return Phel data via `row->map` or `php->phel`.
    - Public functions get a one-line `:doc`. Internal helpers use `defn-`.
-3. **Drop the entry** from the "Not implemented yet" block at the bottom of the file.
+3. **Confirm it is not already wrapped** - the PDO surface is complete, so a new wrapper is an addition rather than filling a known gap.
 4. **Add a `deftest`** in the matching section of `tests/pdo_test.phel`, driven through `*conn*` and `seed-t1` / `create-t1` / `insert-name` when possible. One behaviour per `deftest`; share setup via `testing` blocks.
 5. **Update** the API table in `README.md` and the `## [Unreleased]` block in `CHANGELOG.md`.
 

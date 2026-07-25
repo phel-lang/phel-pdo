@@ -1,6 +1,6 @@
 (in-ns phel.pdo)
 
-(defstruct statement [stmt])
+(defstruct statement [stmt bindings])
 
 (defn- stmt-handle
   "The raw \\PDOStatement behind a statement struct, for the statement-only wrappers."
@@ -224,6 +224,60 @@
   (php/-> (stmt-handle stmt) (debugDumpParams))
   (php/ob_get_clean))
 
-;; Not implemented yet:
-;;
-;; PDOStatement::bindColumn      — Bind a column to a PHP variable
+;;; ---------------------------------------------------------------------------
+;;; Bound columns
+;;;
+;;; PDO's FETCH_BOUND writes each fetched column into a PHP variable bound by
+;;; reference. Phel has no by-reference locals to hand PDOStatement::bindColumn -
+;;; the compiler passes arguments by value, so the reference is never
+;;; established and the variable stays untouched.
+;;;
+;;; Atoms are the Phel-native cell for the same job. bind-column records the
+;;; target on the statement and fetch-bound refreshes every one of them from an
+;;; ordinary fetch, which gives FETCH_BOUND's ergonomics without needing PDO's
+;;; by-reference mechanism.
+
+(defn- index-of [v x]
+  (loop [i 0]
+    (cond
+      (>= i (count v)) nil
+      (= x (get v i)) i
+      (recur (inc i)))))
+
+(defn- bound-index
+  "Resolves a bind-column key to a 0-based row offset. Integers are 1-based
+  positional, matching PDO; anything else names a column."
+  [ks column]
+  (if (int? column)
+    (dec column)
+    (let [k (keyword (name column))
+          i (and ks (index-of ks k))]
+      (or i
+          (throw (php/new \InvalidArgumentException
+                          (str "fetch-bound: no column named " k " in the result set")))))))
+
+(defn bind-column
+  "Binds a result column to an atom, refreshed by every fetch-bound. column is a
+  1-based position (as PDO numbers them) or a column name. Returns a new statement
+  carrying the binding, so it threads with ->.
+
+  This is the Phel counterpart of PDO's FETCH_BOUND rather than a wrapper around
+  PDOStatement::bindColumn: that binds a PHP variable by reference, and Phel has
+  no by-reference locals to give it"
+  [stmt column target]
+  (put stmt :bindings (put (or (stmt :bindings) {}) column target)))
+
+(defn ^bool fetch-bound
+  "Fetches the next row and resets every atom bound with bind-column. Returns true
+  when a row was read, false once the cursor is exhausted - the atoms keep their
+  last values in that case, as PDO leaves its bound variables alone"
+  [stmt]
+  (let [bindings (or (stmt :bindings) {})
+        ks       (column-keywords stmt)
+        row      (php/-> (stmt-handle stmt) (fetch \PDO/FETCH_NUM))]
+    (if (php/=== row false)
+      false
+      (let [values (php->phel row)]
+        (dofor [[column target] :pairs bindings]
+          (reset! target (get values (bound-index ks column))))
+        true))))

@@ -20,7 +20,7 @@ phel-pdo is a thin idiomatic wrapper. Callers should never need to write `php/->
 ## Adding a wrapper
 
 1. Confirm it isn't already wrapped.
-2. Remove it from the "Not implemented yet" block in `statement.phel` / `pdo.phel`.
+2. Check `README.md`'s API tables - the PDO surface is fully wrapped, so a genuinely missing method is now unusual.
 3. Add the `defn` next to its peers.
 4. Add a `deftest` in the matching section of `tests/pdo_test.phel`, driven through `*conn*` and `t1` where possible.
 5. Update the API table in `README.md` and `## [Unreleased]` in `CHANGELOG.md`.
