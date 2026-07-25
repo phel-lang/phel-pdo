@@ -305,6 +305,39 @@
   (let [stmt (pdo/query *conn* "select * from t1")]
     (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}] (pdo/fetch-all stmt)))))
 
+(deftest query-without-params-is-unchanged
+  (seed-t1 *conn*)
+  (is (= {:id 1, :name "phel"} (pdo/fetch (pdo/query *conn* "select * from t1 where id = 1")))))
+
+(deftest query-binds-positional-params
+  (seed-t1 *conn*)
+  (is (= {:id 1, :name "phel"}
+         (pdo/fetch (pdo/query *conn* "select * from t1 where id = ?" [1])))))
+
+(deftest query-binds-named-params
+  (seed-t1 *conn*)
+  (is (= {:id 1, :name "phel"}
+         (pdo/fetch (pdo/query *conn* "select * from t1 where id = :id" {:id 1})))))
+
+(deftest query-params-go-through-a-prepared-statement
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (testing "a hostile value is bound, never interpolated"
+           (is (= [] (pdo/fetch-all (pdo/query *conn* "select * from t1 where name = ?"
+                                               ["'; drop table t1; --"]))))
+           (is (= 1 (pdo/fetch-column (pdo/query *conn* "select count(*) from t1")))
+               "t1 must still exist")))
+
+(deftest query-empty-params-takes-the-no-params-path
+  (seed-t1 *conn*)
+  (is (= {:id 1, :name "phel"} (pdo/fetch (pdo/query *conn* "select * from t1" []))))
+  (is (= {:id 1, :name "phel"} (pdo/fetch (pdo/query *conn* "select * from t1" nil)))))
+
+(deftest query-accepts-fetch-mode-in-options
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select name from t1" nil {:fetch-mode \PDO/FETCH_NUM})]
+    (is (= ["phel"] (values (php->phel (php/-> (stmt :stmt) (fetch))))))))
+
 (deftest column-names-reports-result-set-columns
   (seed-t1 *conn*)
   (is (= [:id :name] (pdo/column-names (pdo/query *conn* "select id, name from t1"))))
@@ -531,6 +564,11 @@
     (testing "int -> PARAM_INT, bool -> PARAM_BOOL, nil -> PARAM_NULL, string/float -> PARAM_STR"
              (is (= [\PDO/PARAM_INT \PDO/PARAM_BOOL \PDO/PARAM_NULL \PDO/PARAM_STR \PDO/PARAM_STR]
                     (dumped-param-types stmt))))))
+
+(deftest query-params-infer-types
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select * from t1 where id = :id" {:id 1})]
+    (is (= [\PDO/PARAM_INT] (dumped-param-types stmt)))))
 
 (deftest bind-value-explicit-type-beats-inference
   (let [stmt (pdo/prepare *conn* "select :i")]

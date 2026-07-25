@@ -30,6 +30,11 @@ composer require phel-lang/phel-pdo
 (-> (pdo/query conn "select * from t1")
     (pdo/fetch-all))
 ;; => [{:id 1, :name "phel"} {:id 2, :name "php"}]
+
+;; With params - bound, never interpolated into the SQL
+(-> (pdo/query conn "select * from t1 where id = ?" [1])
+    (pdo/fetch))
+;; => {:id 1, :name "phel"}
 ```
 
 That's the whole mental model:

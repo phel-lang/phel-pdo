@@ -22,9 +22,35 @@ phel-pdo never closes a connection it did not open:
 (def conn (pdo/from-connection php-pdo {:apply-defaults true}))
 ```
 
+## One-off queries with params
+
+`pdo/query` binds params for you, so a single read is a single call:
+
+```clojure
+(-> (pdo/query conn "select * from t1 where id = ?" [1])
+    (pdo/fetch))
+;; => {:id 1, :name "phel"}
+
+(-> (pdo/query conn "select * from t1 where name = :name" {:name "phel"})
+    (pdo/fetch-all))
+```
+
+A vector binds positionally (1-based), a map binds by name. Either way the
+values go through a prepared statement - they are never spliced into the SQL
+string, so `"'; drop table t1; --"` is just an unusual name.
+
+Without params, `pdo/query` uses `PDO::query` directly and skips the prepare.
+
+To set the statement's native fetch mode, pass it in the options map:
+
+```clojure
+(pdo/query conn "select name from t1" nil {:fetch-mode \PDO/FETCH_NUM})
+```
+
 ## Prepared statements
 
-Reuse a statement across many parameter sets:
+Reach for `pdo/prepare` when you want to reuse one statement across many
+parameter sets:
 
 ```clojure
 (let [stmt (pdo/prepare conn "insert into t1 (name) values (:name)")]
