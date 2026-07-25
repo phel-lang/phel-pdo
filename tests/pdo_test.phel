@@ -8,11 +8,44 @@
 
 (def ^:dynamic *conn* nil)
 
+;; The suite runs against sqlite ::memory: by default, so `composer test` needs no
+;; server. Point PHEL_PDO_DSN at MySQL or PostgreSQL to run the same tests there -
+;; see docs/contributing.md. CI does all three.
+
+(defn- env-or [name fallback]
+  (let [v (php/getenv name)]
+    (if (or (php/=== v false) (= "" v)) fallback v)))
+
+(defn- test-dsn [] (env-or "PHEL_PDO_DSN" "sqlite::memory:"))
+
 (defn- fresh-conn []
-  (pdo/connect "sqlite::memory:"))
+  (pdo/connect (test-dsn)
+               (env-or "PHEL_PDO_USER" nil)
+               (env-or "PHEL_PDO_PASS" nil)))
+
+(defn- driver
+  "The PDO driver name behind a connection: sqlite, mysql or pgsql."
+  [conn]
+  (pdo/get-attribute conn \PDO/ATTR_DRIVER_NAME))
+
+(defn- sqlite? [conn] (= "sqlite" (driver conn)))
+(defn- mysql? [conn] (= "mysql" (driver conn)))
+(defn- pgsql? [conn] (= "pgsql" (driver conn)))
+
+(defn- autoincrement-ddl
+  "`id` column DDL for an auto-assigned integer primary key, per driver."
+  [conn]
+  (case (driver conn)
+    "mysql" "id int auto_increment primary key"
+    "pgsql" "id serial primary key"
+    "id integer primary key autoincrement"))
+
+(defn- drop-table [conn name]
+  (pdo/exec conn (str "drop table if exists " name)))
 
 (defn- create-t1 [conn]
-  (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))"))
+  (drop-table conn "t1")
+  (pdo/exec conn (str "create table t1 (" (autoincrement-ddl conn) ", name varchar(64))")))
 
 (defn- insert-name [conn name]
   (-> (pdo/prepare conn "insert into t1 (name) values (:name)")
@@ -26,8 +59,31 @@
   (insert-name conn "phel")
   conn)
 
+(defn- null-safe-eq
+  "NULL-safe equality against a *placeholder*, spelled per driver. Only sqlite
+  accepts bare `is ?`; MySQL wants `<=>` and PostgreSQL the standard spelling."
+  [conn column placeholder]
+  (cond
+    (mysql? conn) (str column " <=> " placeholder)
+    (pgsql? conn) (str column " is not distinct from " placeholder)
+    (str column " is " placeholder)))
+
+;; Driver-specific expectations branch inline: the Phel runner has no skip
+;; mechanism and no --filter, so a `when-not` with a comment saying *why* is the
+;; pattern. Keep the reason next to the branch, never a bare driver check.
+
+(defn- unique-violation-sqlstate
+  "SQLSTATE for a duplicate primary key. Standard says 23000; PostgreSQL is more
+  specific and reports 23505."
+  [conn]
+  (if (pgsql? conn) "23505" "23000"))
+
 (defn db-fixture [t]
   (binding [*conn* (fresh-conn)]
+    ;; sqlite ::memory: is fresh per connection; a real server is not, so clear
+    ;; anything a previous deftest left behind.
+    (when-not (sqlite? *conn*)
+      (dofor [tbl :in ["t1" "t2" "t3" "big"]] (drop-table *conn* tbl)))
     (t)))
 
 (use-fixtures :each db-fixture)
@@ -53,14 +109,14 @@
 (deftest from-connection-wraps-existing-pdo
   (let [raw  (php/new \PDO "sqlite::memory:")
         conn (pdo/from-connection raw)]
-    (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))")
+    (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(64))")
     (pdo/exec conn "insert into t1 (name) values ('phel')")
     (is (= {:id 1, :name "phel"} (pdo/fetch (pdo/query conn "select * from t1 where id = 1"))))))
 
 (deftest from-connection-supports-transactions
   (let [raw  (php/new \PDO "sqlite::memory:")
         conn (pdo/from-connection raw)]
-    (pdo/exec conn "create table t1 (id integer, name varchar(10))")
+    (pdo/exec conn "create table t1 (id integer, name varchar(64))")
     (pdo/with-transaction conn
                           (pdo/exec conn "insert into t1 values (1, 'phel')"))
     (is (= 1 (pdo/fetch-column (pdo/query conn "select count(*) from t1"))))))
@@ -81,7 +137,12 @@
   (is (contains-value? (pdo/get-available-drivers) "sqlite")))
 
 (deftest quote-escapes-single-quotes
-  (is (= "'I''m fine.'" (pdo/quote *conn* "I'm fine."))))
+  (testing "the quoted literal round-trips through the driver"
+           (is (= "I'm fine."
+                  (pdo/select-value *conn* (str "select " (pdo/quote *conn* "I'm fine."))))))
+  (testing "sqlite and postgres double the quote; mysql backslash-escapes"
+           (is (= (if (mysql? *conn*) "'I\\'m fine.'" "'I''m fine.'")
+                  (pdo/quote *conn* "I'm fine.")))))
 
 ;; -----------------
 ;; Handle validation
@@ -330,7 +391,7 @@
 
 (deftest close-rolls-back-an-open-transaction
   (let [conn (pdo/connect "sqlite::memory:")]
-    (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))")
+    (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(64))")
     (pdo/begin conn)
     (pdo/insert conn :t1 {:name "phel"})
     (pdo/close conn)
@@ -614,7 +675,7 @@
                   (caught-class (fn [] (pdo/insert-many *conn* :t1 [{:name "a"} {:id 2}])))))))
 
 (deftest insert-many-handles-multi-column-rows
-  (pdo/exec *conn* "create table t2 (a, b)")
+  (pdo/exec *conn* "create table t2 (a integer, b varchar(64))")
   (is (= 2 (pdo/insert-many *conn* :t2 [{:a 1, :b "x"} {:a 2, :b "y"}])))
   (is (= [{:a 1, :b "x"} {:a 2, :b "y"}] (pdo/select *conn* "select a, b from t2"))))
 
@@ -977,15 +1038,15 @@
   (pdo/exec *conn* "insert into t1 (name) values ('phel')")
   (pdo/exec *conn* "insert into t1 (name) values (null)")
   (testing "a nil param matches IS NULL rather than the empty string"
-           (let [stmt (pdo/prepare *conn* "select count(*) from t1 where name is :n")]
-             ;; sqlite accepts `is` for NULL-safe comparison
+           (let [sql  (str "select count(*) from t1 where " (null-safe-eq *conn* "name" ":n"))
+                 stmt (pdo/prepare *conn* sql)]
              (is (= 1 (-> stmt (pdo/execute {:n nil}) (pdo/fetch-column)))))))
 
 (deftest execute-under-emulated-prepares-keeps-int-params-unquoted
   ;; Emulated prepares is PDO's MySQL default. With PARAM_STR, `limit :n`
   ;; interpolates as `limit '2'`, which MySQL rejects outright.
   (let [conn (pdo/connect "sqlite::memory:" nil nil {\PDO/ATTR_EMULATE_PREPARES true})]
-    (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))")
+    (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(64))")
     (pdo/exec conn "insert into t1 (name) values ('a'), ('b'), ('c')")
     (let [stmt (pdo/prepare conn "select name from t1 order by id limit :n")]
       (pdo/execute stmt {:n 2})
@@ -1039,15 +1100,32 @@
         stmt (pdo/execute stmt)]
     (is (= [1 "phel"] (php->phel (php/-> (stmt :stmt) (fetch)))))))
 
-(deftest next-rowset-rejected-on-sqlite
+(deftest next-rowset-on-a-single-rowset-statement
   (seed-t1 *conn*)
-  ;; SQLite has no multi-rowset support; depending on the driver build this is
-  ;; either a false return or a PDOException - both prove the call reached nextRowset.
+  ;; No further rowset to advance to. SQLite has no multi-rowset support at all,
+  ;; so depending on the driver build this is either a false return or a
+  ;; PDOException - both prove the call reached nextRowset.
   (let [stmt    (pdo/query *conn* "select * from t1")
         outcome (try
                   (pdo/next-rowset stmt)
                   (catch \PDOException _e :unsupported))]
     (is (or (= false outcome) (= :unsupported outcome)))))
+
+(deftest next-rowset-advances-a-multi-rowset-statement
+  ;; The positive path needs a driver that actually returns several rowsets.
+  ;; MySQL does, via a stored procedure with two selects; sqlite and pgsql do not.
+  (when (mysql? *conn*)
+    (create-t1 *conn*)
+    (insert-name *conn* "phel")
+    (pdo/exec *conn* "drop procedure if exists two_rowsets")
+    (pdo/exec *conn* "create procedure two_rowsets() begin select name from t1; select 42 as answer; end")
+    (let [stmt (pdo/query *conn* "call two_rowsets()")]
+      (is (= [{:name "phel"}] (pdo/fetch-all stmt)))
+      (is (= true (pdo/next-rowset stmt)))
+      (is (= [{:answer 42}] (pdo/fetch-all stmt)))
+      ;; MySQL refuses further queries while a multi-rowset statement is pending.
+      (pdo/close-cursor stmt))
+    (pdo/exec *conn* "drop procedure if exists two_rowsets")))
 
 (deftest set-fetch-mode-rejects-too-many-args
   (seed-t1 *conn*)
@@ -1154,17 +1232,37 @@
 
 (deftest error-code-on-constraint-violation
   (seed-t1 *conn*)
-  (try
-    (pdo/exec *conn* "insert into t1 (id, name) values (1, 'php')")
-    (catch \PDOException _e nil))
-  (is (= "23000" (pdo/error-code *conn*))))
+  ;; Only sqlite leaves a failed exec()'s SQLSTATE on the *connection*. pdo_mysql
+  ;; and pdo_pgsql attach it to the result/statement and report 00000 here. That
+  ;; is PDO's behaviour, not the wrapper's - the statement-level tests below cover
+  ;; the path that works everywhere.
+  ;;
+  ;; Resolve the driver *before* the failing statement: get-attribute is itself a
+  ;; successful PDO call and resets the connection's error state.
+  (let [sqlite?  (sqlite? *conn*)
+        expected (unique-violation-sqlstate *conn*)]
+    (try
+      (pdo/exec *conn* "insert into t1 (id, name) values (1, 'php')")
+      (catch \PDOException _e nil))
+    (when sqlite?
+      (is (= expected (pdo/error-code *conn*))))))
 
 (deftest error-info-on-constraint-violation
   (seed-t1 *conn*)
-  (try
-    (pdo/exec *conn* "insert into t1 (id, name) values (1, 'php')")
-    (catch \PDOException _e nil))
-  (is (= ["23000" 19 "UNIQUE constraint failed: t1.id"] (pdo/error-info *conn*))))
+  ;; Only the SQLSTATE is portable. The driver code and message are the driver's
+  ;; own words, so assert their *shape* - that is what the wrapper promises.
+  ;; Driver resolved up front, as above.
+  (let [sqlite?  (sqlite? *conn*)
+        expected (unique-violation-sqlstate *conn*)]
+    (try
+      (pdo/exec *conn* "insert into t1 (id, name) values (1, 'php')")
+      (catch \PDOException _e nil))
+    (when sqlite?
+      (let [[sqlstate driver-code message] (pdo/error-info *conn*)]
+        (is (= expected sqlstate))
+        (is (int? driver-code))
+        (is (php/is_string message))
+        (is (not= "" message))))))
 
 (deftest statement-error-code-on-constraint-violation
   (seed-t1 *conn*)
@@ -1172,7 +1270,7 @@
     (try
       (pdo/execute stmt)
       (catch \PDOException _e nil))
-    (is (= "23000" (pdo/error-code stmt)))))
+    (is (= (unique-violation-sqlstate *conn*) (pdo/error-code stmt)))))
 
 (deftest statement-error-info-on-constraint-violation
   (seed-t1 *conn*)
@@ -1180,4 +1278,8 @@
     (try
       (pdo/execute stmt)
       (catch \PDOException _e nil))
-    (is (= ["23000" 19 "UNIQUE constraint failed: t1.id"] (pdo/error-info stmt)))))
+    (let [[sqlstate driver-code message] (pdo/error-info stmt)]
+      (is (= (unique-violation-sqlstate *conn*) sqlstate))
+      (is (int? driver-code))
+      (is (php/is_string message))
+      (is (not= "" message)))))
