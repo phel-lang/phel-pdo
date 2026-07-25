@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `pdo/fetch-all` takes an `:as` option to pick the row shape. `:maps` (the default, unchanged) gives a seq of maps; `:rows` gives `{:cols [...] :rows [[...]]}` for column-oriented work - **5x faster** on 20k rows x 5 columns (869 ms -> 172 ms), because it never builds a map per row. An unknown `:as` raises `InvalidArgumentException` rather than silently falling back ([#40]).
+- `pdo/column-names` - the result set's column names as a vector of keywords in select order, or `nil` when the driver cannot report them ([#40]).
 - `pdo/with-savepoint` - run a thunk inside a `SAVEPOINT`, releasing it on success or rolling back to it and re-throwing. The primitive behind nested `pdo/with-transaction` ([#37]).
 
 ### Fixed
@@ -179,3 +181,4 @@ The three BC entries for this release are listed under **Breaking changes** abov
 [#37]: https://github.com/phel-lang/phel-pdo/issues/37
 [#38]: https://github.com/phel-lang/phel-pdo/issues/38
 [#39]: https://github.com/phel-lang/phel-pdo/issues/39
+[#40]: https://github.com/phel-lang/phel-pdo/issues/40

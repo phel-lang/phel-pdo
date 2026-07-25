@@ -305,6 +305,48 @@
   (let [stmt (pdo/query *conn* "select * from t1")]
     (is (= [{:id 1, :name "phel"} {:id 2, :name "php"}] (pdo/fetch-all stmt)))))
 
+(deftest column-names-reports-result-set-columns
+  (seed-t1 *conn*)
+  (is (= [:id :name] (pdo/column-names (pdo/query *conn* "select id, name from t1"))))
+  (is (= [:name :id] (pdo/column-names (pdo/query *conn* "select name, id from t1")))))
+
+(deftest fetch-all-default-shape-is-maps
+  (seed-t1 *conn*)
+  (is (= (pdo/fetch-all (pdo/query *conn* "select * from t1"))
+         (pdo/fetch-all (pdo/query *conn* "select * from t1") {:as :maps}))))
+
+(deftest fetch-all-rows-shape
+  (create-t1 *conn*)
+  (insert-name *conn* "phel")
+  (insert-name *conn* "php")
+  (is (= {:cols [:id :name]
+          :rows [[1 "phel"] [2 "php"]]}
+         (pdo/fetch-all (pdo/query *conn* "select id, name from t1 order by id") {:as :rows}))))
+
+(deftest fetch-all-rows-shape-follows-select-order
+  (seed-t1 *conn*)
+  (is (= {:cols [:name :id] :rows [["phel" 1]]}
+         (pdo/fetch-all (pdo/query *conn* "select name, id from t1") {:as :rows}))))
+
+(deftest fetch-all-rows-shape-keeps-cols-when-empty
+  (seed-t1 *conn*)
+  (is (= {:cols [:id :name] :rows []}
+         (pdo/fetch-all (pdo/query *conn* "select id, name from t1 where id = 999") {:as :rows}))))
+
+(deftest fetch-all-rows-shape-handles-nulls
+  (create-t1 *conn*)
+  (pdo/exec *conn* "insert into t1 (name) values (null)")
+  (is (= {:cols [:id :name] :rows [[1 nil]]}
+         (pdo/fetch-all (pdo/query *conn* "select id, name from t1") {:as :rows}))))
+
+(deftest fetch-all-rejects-unknown-shape
+  (seed-t1 *conn*)
+  (let [stmt (pdo/query *conn* "select * from t1")]
+    (is (= "InvalidArgumentException"
+           (caught-class (fn [] (pdo/fetch-all stmt {:as :php})))))
+    (is (php/str_contains (caught-message (fn [] (pdo/fetch-all stmt {:as :php}))) ":maps")
+        "the message should name the valid shapes")))
+
 (deftest fetch-all-handles-null-columns
   (create-t1 *conn*)
   (pdo/exec *conn* "insert into t1 (name) values ('phel')")

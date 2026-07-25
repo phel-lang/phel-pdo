@@ -35,13 +35,17 @@
     (println (str "\n" rows " rows x 5 columns, sqlite ::memory:\n"))
     (let [wrapped (bench "pdo/fetch-all"
                          (fn [] (count (pdo/fetch-all (pdo/query conn "select * from big")))))
+          rowsy   (bench "pdo/fetch-all {:as :rows}"
+                         (fn [] (count ((pdo/fetch-all (pdo/query conn "select * from big") {:as :rows}) :rows))))
           seqd    (bench "pdo/statement-seq (realised)"
                          (fn [] (count (into [] (pdo/statement-seq (pdo/query conn "select * from big"))))))
           raw     (bench "raw PDO::fetchAll (floor)"
                          (fn [] (php/count (php/-> (php/-> (conn :pdo) (query "select * from big"))
                                                    (fetchAll \PDO/FETCH_ASSOC)))))]
-      (println (str "\nfetch-all is " (php/round (/ wrapped raw) 1) "x the raw PDO floor"))
-      (println (str "statement-seq is " (php/round (/ seqd raw) 1) "x the raw PDO floor")))))
+      (println (str "\nfetch-all         " (php/round (/ wrapped raw) 1) "x the raw PDO floor"))
+      (println (str "fetch-all :rows   " (php/round (/ rowsy raw) 1) "x the raw PDO floor"))
+      (println (str "statement-seq     " (php/round (/ seqd raw) 1) "x the raw PDO floor"))
+      (println (str ":rows vs :maps    " (php/round (/ wrapped rowsy) 2) "x faster")))))
 
 (run (let [env (php/getenv "BENCH_ROWS")]
        (if (php/=== env false) default-rows (php/intval env))))
