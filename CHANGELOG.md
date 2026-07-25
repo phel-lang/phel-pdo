@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking changes
+
+Three call-site changes since `0.1.0`. Each corrects behaviour that was wrong, not
+merely different - check these before upgrading.
+
+- **`pdo/error-code` returns a string.** It used to run the SQLSTATE through
+  `php/intval`, which corrupted every non-numeric state: `"HY000"` became `0`. Any
+  code branching on the old integer was silently taking the wrong branch.
+  `pdo/error-info`'s first element changes the same way (`driver-code` stays an int).
+  *Migration:* compare against the string - `(= "HY000" (pdo/error-code conn))`.
+- **`pdo/last-insert-id` and `pdo/insert` return a string.** PDO reports the id as a
+  string; returning it verbatim is lossless for big integers and named sequences.
+  *Migration:* `(php/intval (pdo/last-insert-id conn))` where you need a number.
+- **`pdo/get-available-drivers` takes no connection argument.**
+  `PDO::getAvailableDrivers` is static, so requiring a connection was wrong.
+  *Migration:* drop the argument - `(pdo/get-available-drivers)`.
+
 ### Added
 
 - `pdo/insert` - build an `INSERT` from a map and return the new `last-insert-id`; identifiers must match `[A-Za-z_][A-Za-z0-9_]*` ([#4]).
@@ -24,9 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `pdo/get-attribute` / `pdo/set-attribute` now accept a connection **or** a statement handle ([#12]).
 - `pdo/error-code` / `pdo/error-info` now accept a connection **or** a statement handle ([#14]).
-- **BC** `pdo/error-code` returns the SQLSTATE **string** (e.g. `"HY000"`), and `pdo/error-info`'s first element is likewise a string (`driver-code` stays an int). The old `intval` corrupted non-numeric states like `HY000` (→ `0`).
-- **BC** `pdo/last-insert-id` and `pdo/insert` return the id as a **string** (as PDO reports it); lossless for big integers and named sequences. `php/intval` it if you need a number.
-- **BC** `pdo/get-available-drivers` takes no connection argument - it is static. Call `(pdo/get-available-drivers)`.
+
+The three BC entries for this release are listed under **Breaking changes** above.
 
 ### Fixed
 
@@ -109,3 +125,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Minimum functionality.
+
+[Unreleased]: https://github.com/phel-lang/phel-pdo/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/phel-lang/phel-pdo/compare/v0.0.8...v0.1.0
+[0.0.8]: https://github.com/phel-lang/phel-pdo/compare/v0.0.7...v0.0.8
+[0.0.7]: https://github.com/phel-lang/phel-pdo/compare/v0.0.6...v0.0.7
+[0.0.6]: https://github.com/phel-lang/phel-pdo/compare/v0.0.5...v0.0.6
+[0.0.5]: https://github.com/phel-lang/phel-pdo/compare/v0.0.4...v0.0.5
+[0.0.4]: https://github.com/phel-lang/phel-pdo/compare/v0.0.3...v0.0.4
+[0.0.3]: https://github.com/phel-lang/phel-pdo/compare/v0.0.2...v0.0.3
+[0.0.2]: https://github.com/phel-lang/phel-pdo/compare/v0.0.1...v0.0.2
+[0.0.1]: https://github.com/phel-lang/phel-pdo/compare/v0.0.0...v0.0.1
+[0.0.0]: https://github.com/phel-lang/phel-pdo/releases/tag/v0.0.0
+
+[#1]: https://github.com/phel-lang/phel-pdo/issues/1
+[#2]: https://github.com/phel-lang/phel-pdo/issues/2
+[#3]: https://github.com/phel-lang/phel-pdo/issues/3
+[#4]: https://github.com/phel-lang/phel-pdo/issues/4
+[#8]: https://github.com/phel-lang/phel-pdo/issues/8
+[#9]: https://github.com/phel-lang/phel-pdo/issues/9
+[#11]: https://github.com/phel-lang/phel-pdo/issues/11
+[#12]: https://github.com/phel-lang/phel-pdo/issues/12
+[#13]: https://github.com/phel-lang/phel-pdo/issues/13
+[#14]: https://github.com/phel-lang/phel-pdo/issues/14
+[#15]: https://github.com/phel-lang/phel-pdo/issues/15
+[#16]: https://github.com/phel-lang/phel-pdo/issues/16
+[#17]: https://github.com/phel-lang/phel-pdo/issues/17
+[#20]: https://github.com/phel-lang/phel-pdo/issues/20
+[#21]: https://github.com/phel-lang/phel-pdo/issues/21
