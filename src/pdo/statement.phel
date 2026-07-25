@@ -56,12 +56,19 @@
                                       (phel->php (or ctor-args []))))]
     obj))
 
+(declare bind-value)
+
 (defn execute
-  "Executes a prepared statement"
+  "Executes a prepared statement. Params are bound individually so they pick up the
+  type inference of bind-value - passing them to PDOStatement::execute would force
+  every one to PARAM_STR. A map binds by name, anything else binds positionally
+  (1-based, in order)"
   [stmt & [params]]
-  (if (empty? params)
-    (php/-> (stmt-handle stmt) (execute))
-    (php/-> (stmt-handle stmt) (execute (phel->php params))))
+  (when-not (empty? params)
+    (if (map? params)
+      (dofor [[k v] :pairs params] (bind-value stmt k v))
+      (dofor [[i v] :pairs params] (bind-value stmt (inc i) v))))
+  (php/-> (stmt-handle stmt) (execute))
   stmt)
 
 (defn close-cursor
@@ -114,20 +121,33 @@
   [column]
   (if (int? column) column (str column)))
 
+(defn- infer-param-type
+  "PDO type for a Phel value. Floats stay PARAM_STR: PDO has no PARAM_FLOAT, and
+  PARAM_STR is the lossless choice for them."
+  [value]
+  (cond
+    (nil? value) \PDO/PARAM_NULL
+    (boolean? value) \PDO/PARAM_BOOL
+    (int? value) \PDO/PARAM_INT
+    \PDO/PARAM_STR))
+
 (defn bind-value
-  "Binds a value to a parameter (named placeholder or 1-based positional index)"
+  "Binds a value to a parameter (named placeholder or 1-based positional index).
+  The PDO type is inferred from the value - nil, booleans and ints get PARAM_NULL,
+  PARAM_BOOL and PARAM_INT - unless an explicit type is given"
   [stmt column value & [type]]
   (php/-> (stmt-handle stmt)
-          (bindValue (param-key column) value (or type \PDO/PARAM_STR)))
+          (bindValue (param-key column) value (or type (infer-param-type value))))
   stmt)
 
 (defn bind-param
-  "Binds a value to a parameter. The value is captured at call time: Phel values
-  are immutable, so unlike PHP's by-reference bindParam there is nothing to mutate
-  before execute - for fresh values per run, re-bind or pass a params map to execute"
+  "Binds a value to a parameter, with the same type inference as bind-value. The
+  value is captured at call time: Phel values are immutable, so unlike PHP's
+  by-reference bindParam there is nothing to mutate before execute - for fresh
+  values per run, re-bind or pass a params map to execute"
   [stmt column value & [type]]
   (php/-> (stmt-handle stmt)
-          (bindParam (param-key column) value (or type \PDO/PARAM_STR)))
+          (bindParam (param-key column) value (or type (infer-param-type value))))
   stmt)
 
 (defn ^string debug-dump-params

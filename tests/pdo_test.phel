@@ -412,7 +412,7 @@
 
 (deftest bind-value
   (seed-t1 *conn*)
-  (testing "default (string) type"
+  (testing "inferred type"
            (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
                  stmt (pdo/bind-value stmt :id 1)
                  stmt (pdo/execute stmt)]
@@ -427,6 +427,70 @@
                  stmt (pdo/bind-value stmt :name "phel" \PDO/PARAM_STR)
                  stmt (pdo/execute stmt)]
              (is (= {:id 1, :name "phel"} (pdo/fetch stmt))))))
+
+;; PDO type constants as debug-dump-params reports them:
+;; PARAM_NULL=0 PARAM_INT=1 PARAM_STR=2 PARAM_LOB=3 PARAM_BOOL=5
+(defn- dumped-param-types
+  "The param_type values debug-dump-params reports, in bind order."
+  [stmt]
+  (->> (php/explode "\n" (pdo/debug-dump-params stmt))
+       (php->phel)
+       (values)
+       (filter (fn [line] (php/str_starts_with line "param_type=")))
+       (map (fn [line] (php/intval (php/substr line 11))))
+       (into [])))
+
+(deftest bind-value-infers-param-type
+  (let [stmt (pdo/prepare *conn* "select :i, :b, :n, :s, :f")]
+    (pdo/bind-value stmt :i 42)
+    (pdo/bind-value stmt :b true)
+    (pdo/bind-value stmt :n nil)
+    (pdo/bind-value stmt :s "phel")
+    (pdo/bind-value stmt :f 1.5)
+    (testing "int -> PARAM_INT, bool -> PARAM_BOOL, nil -> PARAM_NULL, string/float -> PARAM_STR"
+             (is (= [\PDO/PARAM_INT \PDO/PARAM_BOOL \PDO/PARAM_NULL \PDO/PARAM_STR \PDO/PARAM_STR]
+                    (dumped-param-types stmt))))))
+
+(deftest bind-value-explicit-type-beats-inference
+  (let [stmt (pdo/prepare *conn* "select :i")]
+    (pdo/bind-value stmt :i 42 \PDO/PARAM_STR)
+    (is (= [\PDO/PARAM_STR] (dumped-param-types stmt)))))
+
+(deftest bind-param-infers-param-type
+  (let [stmt (pdo/prepare *conn* "select :i, :s")]
+    (pdo/bind-param stmt :i 42)
+    (pdo/bind-param stmt :s "phel")
+    (is (= [\PDO/PARAM_INT \PDO/PARAM_STR] (dumped-param-types stmt)))))
+
+(deftest execute-infers-param-types-for-map-params
+  (let [stmt (pdo/prepare *conn* "select :i, :s, :n")]
+    (pdo/execute stmt {:i 42, :s "phel", :n nil})
+    (is (= [\PDO/PARAM_INT \PDO/PARAM_STR \PDO/PARAM_NULL] (dumped-param-types stmt)))))
+
+(deftest execute-infers-param-types-for-vector-params
+  (let [stmt (pdo/prepare *conn* "select ?, ?, ?")]
+    (pdo/execute stmt [42 "phel" nil])
+    (is (= [\PDO/PARAM_INT \PDO/PARAM_STR \PDO/PARAM_NULL] (dumped-param-types stmt)))))
+
+(deftest execute-binds-nil-as-sql-null
+  (create-t1 *conn*)
+  (pdo/exec *conn* "insert into t1 (name) values ('phel')")
+  (pdo/exec *conn* "insert into t1 (name) values (null)")
+  (testing "a nil param matches IS NULL rather than the empty string"
+           (let [stmt (pdo/prepare *conn* "select count(*) from t1 where name is :n")]
+             ;; sqlite accepts `is` for NULL-safe comparison
+             (is (= 1 (-> stmt (pdo/execute {:n nil}) (pdo/fetch-column)))))))
+
+(deftest execute-under-emulated-prepares-keeps-int-params-unquoted
+  ;; Emulated prepares is PDO's MySQL default. With PARAM_STR, `limit :n`
+  ;; interpolates as `limit '2'`, which MySQL rejects outright.
+  (let [conn (pdo/connect "sqlite::memory:" nil nil {\PDO/ATTR_EMULATE_PREPARES true})]
+    (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(10))")
+    (pdo/exec conn "insert into t1 (name) values ('a'), ('b'), ('c')")
+    (let [stmt (pdo/prepare conn "select name from t1 order by id limit :n")]
+      (pdo/execute stmt {:n 2})
+      (is (= [\PDO/PARAM_INT] (dumped-param-types stmt)))
+      (is (= [{:name "a"} {:name "b"}] (pdo/fetch-all stmt))))))
 
 (deftest bind-param
   (seed-t1 *conn*)
