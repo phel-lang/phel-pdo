@@ -263,7 +263,7 @@
   PDOStatement::bindColumn: that binds a PHP variable by reference, and Phel has
   no by-reference locals to give it"
   [stmt column target]
-  (put stmt :bindings (put (or (stmt :bindings) {}) column target)))
+  (assoc stmt :bindings (assoc (or (stmt :bindings) {}) column target)))
 
 (defn ^bool fetch-bound
   "Fetches the next row and resets every atom bound with bind-column. Returns true

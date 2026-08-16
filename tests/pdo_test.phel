@@ -837,7 +837,7 @@
 (deftest query-accepts-fetch-mode-in-options
   (seed-t1 *conn*)
   (let [stmt (pdo/query *conn* "select name from t1" nil {:fetch-mode \PDO/FETCH_NUM})]
-    (is (= ["phel"] (values (php->phel (php/-> (stmt :stmt) (fetch))))))))
+    (is (= ["phel"] (vals (php->phel (php/-> (stmt :stmt) (fetch))))))))
 
 (deftest column-names-reports-result-set-columns
   (seed-t1 *conn*)
@@ -1050,7 +1050,7 @@
   [stmt]
   (->> (php/explode "\n" (pdo/debug-dump-params stmt))
        (php->phel)
-       (values)
+       (vals)
        (filter (fn [line] (php/str_starts_with line "param_type=")))
        (map (fn [line] (php/intval (php/substr line 11))))
        (into [])))
@@ -1222,7 +1222,7 @@
   (let [stmt  (pdo/prepare *conn* "select * from t1 where name = :name")
         stmt  (pdo/bind-value stmt :name "phel" \PDO/PARAM_STR)
         info  (pdo/debug-dump-params stmt)
-        lines (values (php->phel (php/preg_split "/\r\n|\r|\n/" info)))]
+        lines (vals (php->phel (php/preg_split "/\r\n|\r|\n/" info)))]
     (is (= "SQL: [35] select * from t1 where name = :name" (lines 0)))))
 
 ;; ------

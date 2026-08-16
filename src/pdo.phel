@@ -179,9 +179,9 @@
       (close-cursor stmt)
       (let [stmt  (prepare conn sql)
             evict (when (>= (count order) statement-cache-limit) (first order))
-            cache (-> (if evict (dissoc cache evict) cache) (put sql stmt))
-            order (-> (if evict (into [] (rest order)) order) (push sql))]
-        (swap! (conn :state) (fn [s] (-> s (put :stmt-cache cache) (put :stmt-order order))))
+            cache (-> (if evict (dissoc cache evict) cache) (assoc sql stmt))
+            order (-> (if evict (into [] (rest order)) order) (conj sql))]
+        (swap! (conn :state) (fn [s] (-> s (assoc :stmt-cache cache) (assoc :stmt-order order))))
         stmt))))
 
 (defn ^string insert
@@ -458,7 +458,7 @@
   string; driver-code is the driver-specific integer"
   [handle]
   (let [[sqlstate driver-code driver-message]
-        (values (php->phel (php/-> (handle-target handle) (errorInfo))))]
+        (vals (php->phel (php/-> (handle-target handle) (errorInfo))))]
     [sqlstate (php/intval driver-code) driver-message]))
 
 (defn ^bool in-transaction
@@ -529,9 +529,9 @@
   (when-not (closed? conn)
     (when (and (conn :owned) (php/-> (conn :pdo) (inTransaction)))
       (php/-> (conn :pdo) (rollback)))
-    (swap! (conn :state) (fn [s] (-> s (put :closed true)
-                                     (put :stmt-cache {})
-                                     (put :stmt-order [])))))
+    (swap! (conn :state) (fn [s] (-> s (assoc :closed true)
+                                     (assoc :stmt-cache {})
+                                     (assoc :stmt-order [])))))
   conn)
 
 (defmacro with-connection
@@ -549,6 +549,6 @@
   "Return a vector of available PDO driver names. PDO::getAvailableDrivers is
   static, so no connection is needed"
   []
-  (values (php->phel (php/:: \PDO (getAvailableDrivers)))))
+  (vals (php->phel (php/:: \PDO (getAvailableDrivers)))))
 
 (load "pdo/statement")
