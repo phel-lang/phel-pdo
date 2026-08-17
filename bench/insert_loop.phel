@@ -14,7 +14,7 @@
 ;;   PHEL_PDO_USER=postgres PHEL_PDO_PASS=postgres \
 ;;   vendor/bin/phel run bench/insert_loop.phel
 
-(ns bench\insert-loop
+(ns bench.insert-loop
   (:require phel.pdo))
 
 (def- default-rows 2000)

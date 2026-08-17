@@ -96,13 +96,13 @@
 
 (defn- num-row-seq [stmt ks]
   (lazy-seq
-   (when-let [row (php/-> (stmt-handle stmt) (fetch \PDO/FETCH_NUM))]
-     (cons (num-row->map ks row) (num-row-seq stmt ks)))))
+    (when-let [row (php/-> (stmt-handle stmt) (fetch \PDO/FETCH_NUM))]
+      (cons (num-row->map ks row) (num-row-seq stmt ks)))))
 
 (defn- assoc-row-seq [stmt]
   (lazy-seq
-   (when-let [row (fetch stmt)]
-     (cons row (assoc-row-seq stmt)))))
+    (when-let [row (fetch stmt)]
+      (cons row (assoc-row-seq stmt)))))
 
 (defn statement-seq
   "Returns a lazy seq of the statement's remaining rows as maps, fetched one at a

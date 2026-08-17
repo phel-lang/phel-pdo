@@ -8,7 +8,6 @@
 ;; namespace while call sites reference the qualified name - see #56.
 (defstruct statement [stmt bindings])
 
-
 (defn- bad-handle
   "Raises a caller-facing error for a value that is not the expected phel-pdo handle."
   [handle expected]
