@@ -21,7 +21,7 @@ Return-type tags (`^bool`, `^int`, `^string`) reflect the underlying PDO return 
 ## Comments
 
 - `;` inline, `;;` standalone, `;;; ` section header.
-- `#| |#` multiline, `#_` to comment out a form.
+- `#_` to comment out a form (`#| |#` was removed in phel 0.50).
 - `statement.phel` ends with the bound-columns section; the PDO surface is fully wrapped, so there is no pending-methods block to keep in sync.
 
 ## Semantics
