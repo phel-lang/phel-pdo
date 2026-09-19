@@ -54,16 +54,16 @@ jobs:
         return PhelConfig::forProject(mainNamespace: 'consumer.main');
         PHP
         cat > src/main.phel <<'PHEL'
-        (ns consumer\main (:require phel\pdo))
+        (ns consumer.main (:require phel.pdo))
 
         (def conn (pdo/connect "sqlite::memory:"))
         (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(64))")
         (pdo/insert conn :t1 {:name "phel"})
 
         (when-not (= [{:id 1, :name "phel"}] (pdo/select conn "select * from t1"))
-          (throw (php/new \RuntimeException "select returned unexpected rows")))
+          (throw (new \RuntimeException "select returned unexpected rows")))
         (when-not (= 1 (pdo/select-value conn "select count(*) from t1"))
-          (throw (php/new \RuntimeException "select-value returned unexpected value")))
+          (throw (new \RuntimeException "select-value returned unexpected value")))
 
         (pdo/close conn)
         (println "consumer OK")
