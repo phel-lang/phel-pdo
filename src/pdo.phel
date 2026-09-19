@@ -8,15 +8,14 @@
 ;; namespace while call sites reference the qualified name - see #56.
 (defstruct statement [stmt bindings])
 
-
 (defn- bad-handle
   "Raises a caller-facing error for a value that is not the expected phel-pdo handle."
   [handle expected]
-  (throw (php/new \InvalidArgumentException
-                  (str "phel.pdo: expected " expected ", got " (php/get_debug_type handle)
-                       (if (php/instanceof handle \PDO)
-                         " - wrap it first with (pdo/from-connection pdo)"
-                         "")))))
+  (throw (new \InvalidArgumentException
+              (str "phel.pdo: expected " expected ", got " (php/get_debug_type handle)
+                   (if (php/instanceof handle \PDO)
+                     " - wrap it first with (pdo/from-connection pdo)"
+                     "")))))
 
 (defn- handle-target
   "The raw PDO handle behind a connection or statement struct."
@@ -37,8 +36,8 @@
   [conn]
   (cond
     (not (connection? conn)) (bad-handle conn "a connection handle")
-    (closed? conn) (throw (php/new \InvalidArgumentException
-                                   "phel.pdo: connection is closed"))
+    (closed? conn) (throw (new \InvalidArgumentException
+                               "phel.pdo: connection is closed"))
     (conn :pdo)))
 
 (defn- options->php
@@ -51,18 +50,18 @@
 (defn ^bool set-attribute
   "Set an attribute on a connection or statement"
   [handle attribute value]
-  (php/-> (handle-target handle) (setAttribute attribute value)))
+  (.setAttribute (handle-target handle) attribute value))
 
 (defn get-attribute
   "Retrieve an attribute from a connection or statement"
   [handle attribute]
-  (php/-> (handle-target handle) (getAttribute attribute)))
+  (.getAttribute (handle-target handle) attribute))
 
 (defn connect
   "Connect database and return connection object.
   Throws a PDOException if the attempt to connect to the requested database fails."
   [dsn & [username password options]]
-  (let [conn (connection (php/new \PDO dsn username password (options->php (or options {})))
+  (let [conn (connection (new \PDO dsn username password (options->php (or options {})))
                          true
                          (atom {:closed false}))]
     (set-attribute conn \PDO/ATTR_ERRMODE \PDO/ERRMODE_EXCEPTION)
@@ -75,7 +74,7 @@
   phel-pdo's ERRMODE_EXCEPTION default on the wrapped handle."
   [pdo & [options]]
   (when-not (php/instanceof pdo \PDO)
-    (throw (php/new \InvalidArgumentException "from-connection expects a \\PDO instance")))
+    (throw (new \InvalidArgumentException "from-connection expects a \\PDO instance")))
   (let [conn (connection pdo false (atom {:closed false}))]
     (when (get options :apply-defaults)
       (set-attribute conn \PDO/ATTR_ERRMODE \PDO/ERRMODE_EXCEPTION))
@@ -84,7 +83,7 @@
 (defn ^int exec
   "Execute an SQL statement and return the number of affected rows"
   [conn stmt]
-  (php/-> (conn-pdo conn) (exec stmt)))
+  (.exec (conn-pdo conn) stmt))
 
 (declare execute)
 
@@ -92,7 +91,7 @@
   "Prepares a statement for execution and returns a statement object"
   [conn stmt & [options]]
   (statement
-   (php/-> (conn-pdo conn) (prepare stmt (options->php (or options {})))) {}))
+   (.prepare (conn-pdo conn) stmt (options->php (or options {}))) {}))
 
 (declare set-fetch-mode)
 
@@ -104,7 +103,7 @@
   [conn sql & [params options]]
   (if (empty? params)
     (statement
-     (php/-> (conn-pdo conn) (query sql (get options :fetch-mode \PDO/FETCH_ASSOC))) {})
+     (.query (conn-pdo conn) sql (get options :fetch-mode \PDO/FETCH_ASSOC)) {})
     (let [stmt (prepare conn sql)]
       (when-let [mode (get options :fetch-mode)]
         (set-fetch-mode stmt mode))
@@ -113,34 +112,34 @@
 (defn ^bool begin
   "Initiates a transaction"
   [conn]
-  (php/-> (conn-pdo conn) (beginTransaction)))
+  (.beginTransaction (conn-pdo conn)))
 
 (defn ^bool rollback
   "Rolls back a transaction"
   [conn]
-  (php/-> (conn-pdo conn) (rollback)))
+  (.rollback (conn-pdo conn)))
 
 (defn ^bool commit
   "Commits a transaction"
   [conn]
-  (php/-> (conn-pdo conn) (commit)))
+  (.commit (conn-pdo conn)))
 
 (defn ^string quote
   "Quotes a string for use in a query"
   [conn string & [type]]
-  (php/-> (conn-pdo conn) (quote string (or type \PDO/PARAM_STR))))
+  (.quote (conn-pdo conn) string (or type \PDO/PARAM_STR)))
 
 (defn ^string last-insert-id
   "Returns the ID of the last inserted row or sequence value, as a string (as PDO
   reports it). Returning the raw string is lossless for big integers and named
   sequences; coerce with php/intval at the call site when you need a number"
   [conn]
-  (php/-> (conn-pdo conn) (lastInsertId)))
+  (.lastInsertId (conn-pdo conn)))
 
 (defn- check-ident [s]
   (if (= 1 (php/preg_match "/^[A-Za-z_][A-Za-z0-9_]*$/" s))
     s
-    (throw (php/new \InvalidArgumentException (str "Invalid identifier: " s)))))
+    (throw (new \InvalidArgumentException (str "Invalid identifier: " s)))))
 
 (defn- join-csv [xs]
   (php/implode ", " (phel->php (into [] xs))))
@@ -179,9 +178,9 @@
       (close-cursor stmt)
       (let [stmt  (prepare conn sql)
             evict (when (>= (count order) statement-cache-limit) (first order))
-            cache (-> (if evict (dissoc cache evict) cache) (put sql stmt))
-            order (-> (if evict (into [] (rest order)) order) (push sql))]
-        (swap! (conn :state) (fn [s] (-> s (put :stmt-cache cache) (put :stmt-order order))))
+            cache (-> (if evict (dissoc cache evict) cache) (assoc sql stmt))
+            order (-> (if evict (into [] (rest order)) order) (conj sql))]
+        (swap! (conn :state) (fn [s] (-> s (assoc :stmt-cache cache) (assoc :stmt-order order))))
         stmt))))
 
 (defn ^string insert
@@ -190,7 +189,7 @@
   values are bound as parameters."
   [conn table row]
   (when (empty? row)
-    (throw (php/new \InvalidArgumentException "insert row map must not be empty")))
+    (throw (new \InvalidArgumentException "insert row map must not be empty")))
   (let [tbl  (check-ident (name table))
         cols (into [] (for [k :in (keys row)] (check-ident (name k))))
         sql  (str "INSERT INTO " tbl
@@ -289,10 +288,10 @@
     [(if named-key (str ":" named-key) "?") [[named-key value]]]
 
     (empty? value)
-    (throw (php/new \InvalidArgumentException
-                    (str "expand-in: cannot expand an empty list"
-                         (if named-key (str " for :" named-key) "")
-                         " - `IN ()` is not valid SQL")))
+    (throw (new \InvalidArgumentException
+                (str "expand-in: cannot expand an empty list"
+                     (if named-key (str " for :" named-key) "")
+                     " - `IN ()` is not valid SQL")))
 
     named-key
     [(php/implode ", " (phel->php (into [] (for [i :range [0 (count value)]]
@@ -325,9 +324,9 @@
         (let [seen     (if named? (count (distinct names)) positional)
               expected (count params)]
           (when (not= seen expected)
-            (throw (php/new \InvalidArgumentException
-                            (str "expand-in: SQL has " seen " placeholder(s) but "
-                                 expected " param(s) were given"))))
+            (throw (new \InvalidArgumentException
+                        (str "expand-in: SQL has " seen " placeholder(s) but "
+                             expected " param(s) were given"))))
           [out (if named?
                  (into {} (for [[k v] :in used] [(keyword k) v]))
                  (into [] (for [[_ v] :in used] v)))])
@@ -353,17 +352,17 @@
                   nm (php/substr sql (inc i) (- j (inc i)))
                   k  (keyword nm)]
               (when-not (contains? params k)
-                (throw (php/new \InvalidArgumentException
-                                (str "expand-in: no param supplied for :" nm))))
+                (throw (new \InvalidArgumentException
+                            (str "expand-in: no param supplied for :" nm))))
               (let [[text vals] (expansion nm (get params k))]
                 (recur j (str out text) (into used vals) positional (conj names nm))))
 
             (and (= c "?") (not named?))
             (do
               (when (>= positional (count params))
-                (throw (php/new \InvalidArgumentException
-                                (str "expand-in: SQL has more placeholders than the "
-                                     (count params) " param(s) given"))))
+                (throw (new \InvalidArgumentException
+                            (str "expand-in: SQL has more placeholders than the "
+                                 (count params) " param(s) given"))))
               (let [[text vals] (expansion nil (get params positional))]
                 (recur (inc i) (str out text) (into used vals) (inc positional) names)))
 
@@ -388,7 +387,7 @@
 
 (defn- require-non-empty [m what]
   (when (empty? m)
-    (throw (php/new \InvalidArgumentException (str what " must not be empty")))))
+    (throw (new \InvalidArgumentException (str what " must not be empty")))))
 
 (defn ^int update
   "Updates table, setting the columns of set-map on the rows matched by where-map,
@@ -437,8 +436,8 @@
           shape   (key-set (first rows))]
       (dofor [r :in rows]
         (when-not (= shape (key-set r))
-          (throw (php/new \InvalidArgumentException
-                          "insert-many rows must all have the same keys"))))
+          (throw (new \InvalidArgumentException
+                      "insert-many rows must all have the same keys"))))
       (let [holes  (str "(" (join-csv (for [_ :in cols] "?")) ")")
             sql    (str "INSERT INTO " (check-ident (name table))
                         " (" (join-csv cols) ")"
@@ -450,7 +449,7 @@
   "Fetch the SQLSTATE associated with the last operation on a connection or statement.
   SQLSTATE is a 5-character code (e.g. \"23000\", \"HY000\"), returned as a string"
   [handle]
-  (php/-> (handle-target handle) (errorCode)))
+  (.errorCode (handle-target handle)))
 
 (defn error-info
   "Fetch extended error information associated with the last operation on a connection
@@ -458,13 +457,13 @@
   string; driver-code is the driver-specific integer"
   [handle]
   (let [[sqlstate driver-code driver-message]
-        (values (php->phel (php/-> (handle-target handle) (errorInfo))))]
+        (vals (php->phel (.errorInfo (handle-target handle))))]
     [sqlstate (php/intval driver-code) driver-message]))
 
 (defn ^bool in-transaction
   "Checks if inside a transaction"
   [conn]
-  (php/-> (conn-pdo conn) (inTransaction)))
+  (.inTransaction (conn-pdo conn)))
 
 ;; Monotonic source of savepoint names. Savepoint names are identifiers, so they
 ;; cannot be bound as parameters - they must be generated here and never taken
@@ -527,11 +526,11 @@
   (when-not (connection? conn)
     (bad-handle conn "a connection handle"))
   (when-not (closed? conn)
-    (when (and (conn :owned) (php/-> (conn :pdo) (inTransaction)))
-      (php/-> (conn :pdo) (rollback)))
-    (swap! (conn :state) (fn [s] (-> s (put :closed true)
-                                     (put :stmt-cache {})
-                                     (put :stmt-order [])))))
+    (when (and (conn :owned) (.inTransaction (conn :pdo)))
+      (.rollback (conn :pdo)))
+    (swap! (conn :state) (fn [s] (-> s (assoc :closed true)
+                                     (assoc :stmt-cache {})
+                                     (assoc :stmt-order [])))))
   conn)
 
 (defmacro with-connection
@@ -549,6 +548,6 @@
   "Return a vector of available PDO driver names. PDO::getAvailableDrivers is
   static, so no connection is needed"
   []
-  (values (php->phel (php/:: \PDO (getAvailableDrivers)))))
+  (vals (php->phel (\PDO/getAvailableDrivers))))
 
 (load "pdo/statement")

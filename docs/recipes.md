@@ -268,7 +268,7 @@ that fails undoes only its own writes:
   (try
     (pdo/with-transaction conn
       (pdo/insert conn :accounts {:name "b"})
-      (throw (php/new \Exception "boom")))
+      (throw (new \Exception "boom")))
     (catch \Throwable _e :skipped)))
 ;; => the "a" row is committed; the "b" row is not
 ```
@@ -349,7 +349,7 @@ Available types: `\PDO/PARAM_STR`, `\PDO/PARAM_INT`, `\PDO/PARAM_BOOL`,
 
 Returns a `string` (as PDO reports it) - lossless for big integers and named
 sequences; `php/intval` it when you need a number. On PostgreSQL pass the
-sequence name to raw PDO: `(php/-> (conn :pdo) (lastInsertId "seq"))`.
+sequence name to raw PDO: `(.lastInsertId (conn :pdo) "seq")`.
 
 ## Errors
 

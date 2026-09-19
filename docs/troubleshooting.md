@@ -18,7 +18,7 @@ Then install the matching extension (e.g. `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`
 
 You forgot to `(require phel.pdo)`. Everything - connection-side and statement-side - lives under that single namespace.
 
-If `require` itself fails, your `phel-lang` version may be too old. phel-pdo needs phel-lang `^0.41`.
+If `require` itself fails, your `phel-lang` version may be too old. phel-pdo needs phel-lang `^0.52`.
 
 ## Bound integer matches as a string
 
@@ -88,7 +88,7 @@ phel-pdo sets `ERRMODE_EXCEPTION` in `connect`. If you've overridden it:
 PostgreSQL needs the sequence name. The wrapped `pdo/last-insert-id` calls `lastInsertId()` with no args. Until a sequence-aware wrapper lands, drop down to raw PDO:
 
 ```clojure
-(php/-> (conn :pdo) (lastInsertId "t1_id_seq"))   ; => "42" (string)
+(.lastInsertId (conn :pdo) "t1_id_seq")   ; => "42" (string)
 ```
 
 `pdo/last-insert-id` returns the value as a string (as PDO does); coerce with `php/intval` only when you actually need a number.
@@ -110,7 +110,7 @@ Two things work everywhere:
 ;; or the exception, which always carries it
 (try
   (pdo/exec conn sql)
-  (catch \PDOException e (php/-> e (getCode))))
+  (catch \PDOException e (.getCode e)))
 ```
 
 Note also that **any** successful PDO call clears the error state - including
@@ -155,8 +155,8 @@ variable by reference, and Phel has no by-reference locals to offer it. Use
 For anything genuinely unwrapped, the escape hatch is always:
 
 ```clojure
-(php/-> (conn :pdo)  (someMethod arg1 arg2))
-(php/-> (stmt :stmt) (someMethod arg1 arg2))
+(.someMethod (conn :pdo) arg1 arg2)
+(.someMethod (stmt :stmt) arg1 arg2)
 ```
 
 …and a PR to wrap it properly is welcome - see [contributing](contributing.md#adding-a-wrapper).

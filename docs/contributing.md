@@ -128,7 +128,7 @@ Example commit:
 feat: wrap PDOStatement::closeCursor
 
 Adds `pdo/close-cursor` so callers can re-execute a prepared statement
-without dropping into `php/->`. Returns the statement for threading.
+without dropping into `.method` interop. Returns the statement for threading.
 ```
 
 ## Releasing
