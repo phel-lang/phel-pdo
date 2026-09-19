@@ -107,14 +107,14 @@
     (is (= 1 (pdo/exec conn "insert into t1 values (1)")))))
 
 (deftest from-connection-wraps-existing-pdo
-  (let [raw  (php/new \PDO "sqlite::memory:")
+  (let [raw  (new \PDO "sqlite::memory:")
         conn (pdo/from-connection raw)]
     (pdo/exec conn "create table t1 (id integer primary key autoincrement, name varchar(64))")
     (pdo/exec conn "insert into t1 (name) values ('phel')")
     (is (= {:id 1, :name "phel"} (pdo/fetch (pdo/query conn "select * from t1 where id = 1"))))))
 
 (deftest from-connection-supports-transactions
-  (let [raw  (php/new \PDO "sqlite::memory:")
+  (let [raw  (new \PDO "sqlite::memory:")
         conn (pdo/from-connection raw)]
     (pdo/exec conn "create table t1 (id integer, name varchar(64))")
     (pdo/with-transaction conn
@@ -122,14 +122,14 @@
     (is (= 1 (pdo/fetch-column (pdo/query conn "select count(*) from t1"))))))
 
 (deftest from-connection-leaves-attributes-untouched-by-default
-  (let [raw (php/new \PDO "sqlite::memory:")]
-    (php/-> raw (setAttribute \PDO/ATTR_ERRMODE \PDO/ERRMODE_SILENT))
+  (let [raw (new \PDO "sqlite::memory:")]
+    (.setAttribute raw \PDO/ATTR_ERRMODE \PDO/ERRMODE_SILENT)
     (let [conn (pdo/from-connection raw)]
       (is (= \PDO/ERRMODE_SILENT (pdo/get-attribute conn \PDO/ATTR_ERRMODE))))))
 
 (deftest from-connection-apply-defaults-sets-errmode-exception
-  (let [raw (php/new \PDO "sqlite::memory:")]
-    (php/-> raw (setAttribute \PDO/ATTR_ERRMODE \PDO/ERRMODE_SILENT))
+  (let [raw (new \PDO "sqlite::memory:")]
+    (.setAttribute raw \PDO/ATTR_ERRMODE \PDO/ERRMODE_SILENT)
     (let [conn (pdo/from-connection raw {:apply-defaults true})]
       (is (= \PDO/ERRMODE_EXCEPTION (pdo/get-attribute conn \PDO/ATTR_ERRMODE))))))
 
@@ -159,7 +159,7 @@
   (when-let [e (caught f)] (php/get_class e)))
 
 (defn- caught-message [f]
-  (when-let [e (caught f)] (php/-> e (getMessage))))
+  (when-let [e (caught f)] (.getMessage e)))
 
 (deftest dual-handle-fns-reject-non-handle
   (testing "a plain map is not a connection or statement"
@@ -173,7 +173,7 @@
                   (caught-class (fn [] (pdo/error-info {:foo 1})))))))
 
 (deftest dual-handle-fns-reject-raw-pdo-with-hint
-  (let [raw (php/new \PDO "sqlite::memory:")]
+  (let [raw (new \PDO "sqlite::memory:")]
     (is (= "InvalidArgumentException"
            (caught-class (fn [] (pdo/error-code raw)))))
     (is (php/str_contains (caught-message (fn [] (pdo/error-code raw))) "from-connection")
@@ -252,7 +252,7 @@
   (let [threw (try
                 (pdo/with-transaction *conn*
                                       (insert-name *conn* "phel")
-                                      (throw (php/new \Exception "boom")))
+                                      (throw (new \Exception "boom")))
                 false
                 (catch \Exception _e true))]
     (is (= true threw))
@@ -282,7 +282,7 @@
                         (try
                           (pdo/with-transaction *conn*
                                                 (insert-name *conn* "inner")
-                                                (throw (php/new \Exception "boom")))
+                                                (throw (new \Exception "boom")))
                           (catch \Throwable _e :caught)))
   (is (= 1 (count-t1 *conn*)))
   (is (= "outer" (pdo/fetch-column (pdo/query *conn* "select name from t1")))))
@@ -304,7 +304,7 @@
                                       (insert-name *conn* "outer")
                                       (pdo/with-transaction *conn*
                                                             (insert-name *conn* "inner")
-                                                            (throw (php/new \Exception "boom"))))
+                                                            (throw (new \Exception "boom"))))
                 false
                 (catch \Exception _e true))]
     (testing "an uncaught inner throw still rolls the whole outer transaction back"
@@ -321,7 +321,7 @@
                                               (try
                                                 (pdo/with-transaction *conn*
                                                                       (insert-name *conn* "L3")
-                                                                      (throw (php/new \Exception "boom")))
+                                                                      (throw (new \Exception "boom")))
                                                 (catch \Throwable _e :caught))))
   (testing "only the level that threw is undone"
            (is (= 2 (count-t1 *conn*)))
@@ -399,14 +399,14 @@
              (is (= true (pdo/closed? conn))))))
 
 (deftest close-does-not-touch-a-borrowed-connection
-  (let [raw  (php/new \PDO "sqlite::memory:")
+  (let [raw  (new \PDO "sqlite::memory:")
         conn (pdo/from-connection raw)]
-    (php/-> raw (exec "create table t1 (id integer)"))
+    (.exec raw "create table t1 (id integer)")
     (pdo/close conn)
     (testing "the wrapper is unusable but the host's PDO still works"
              (is (= true (pdo/closed? conn)))
              (is (= "InvalidArgumentException" (caught-class (fn [] (pdo/exec conn "select 1")))))
-             (is (= 0 (php/-> raw (exec "insert into t1 (id) select 1 where 1 = 2")))))))
+             (is (= 0 (.exec raw "insert into t1 (id) select 1 where 1 = 2"))))))
 
 (deftest with-connection-returns-the-last-body-value
   (let [ret (pdo/with-connection [conn (pdo/connect "sqlite::memory:")]
@@ -425,7 +425,7 @@
         threw    (try
                    (pdo/with-connection [conn (pdo/connect "sqlite::memory:")]
                                         (reset! captured conn)
-                                        (throw (php/new \Exception "boom")))
+                                        (throw (new \Exception "boom")))
                    false
                    (catch \Exception _e true))]
     (is (= true threw))
@@ -837,7 +837,7 @@
 (deftest query-accepts-fetch-mode-in-options
   (seed-t1 *conn*)
   (let [stmt (pdo/query *conn* "select name from t1" nil {:fetch-mode \PDO/FETCH_NUM})]
-    (is (= ["phel"] (values (php->phel (php/-> (stmt :stmt) (fetch))))))))
+    (is (= ["phel"] (vals (php->phel (.fetch (stmt :stmt))))))))
 
 (deftest column-names-reports-result-set-columns
   (seed-t1 *conn*)
@@ -971,7 +971,7 @@
   (let [stmt (pdo/query *conn* "select * from t1 where id = 1")
         obj  (pdo/fetch-object stmt)]
     (is (= "stdClass" (php/get_class obj)))
-    (is (= "phel" (php/-> obj name)))))
+    (is (= "phel" (.-name obj)))))
 
 (deftest fetch-object-returns-nil-when-no-rows
   (seed-t1 *conn*)
@@ -1050,7 +1050,7 @@
   [stmt]
   (->> (php/explode "\n" (pdo/debug-dump-params stmt))
        (php->phel)
-       (values)
+       (vals)
        (filter (fn [line] (php/str_starts_with line "param_type=")))
        (map (fn [line] (php/intval (php/substr line 11))))
        (into [])))
@@ -1150,14 +1150,14 @@
   (let [stmt (pdo/prepare *conn* "select name from t1")
         stmt (pdo/set-fetch-mode stmt \PDO/FETCH_COLUMN 0)
         stmt (pdo/execute stmt)]
-    (is (= "phel" (php/-> (stmt :stmt) (fetch))))))
+    (is (= "phel" (.fetch (stmt :stmt))))))
 
 (deftest set-fetch-mode-num-returns-positional-row
   (seed-t1 *conn*)
   (let [stmt (pdo/prepare *conn* "select id, name from t1")
         stmt (pdo/set-fetch-mode stmt \PDO/FETCH_NUM)
         stmt (pdo/execute stmt)]
-    (is (= [1 "phel"] (php->phel (php/-> (stmt :stmt) (fetch)))))))
+    (is (= [1 "phel"] (php->phel (.fetch (stmt :stmt)))))))
 
 (deftest next-rowset-on-a-single-rowset-statement
   (seed-t1 *conn*)
@@ -1222,7 +1222,7 @@
   (let [stmt  (pdo/prepare *conn* "select * from t1 where name = :name")
         stmt  (pdo/bind-value stmt :name "phel" \PDO/PARAM_STR)
         info  (pdo/debug-dump-params stmt)
-        lines (values (php->phel (php/preg_split "/\r\n|\r|\n/" info)))]
+        lines (vals (php->phel (php/preg_split "/\r\n|\r|\n/" info)))]
     (is (= "SQL: [35] select * from t1 where name = :name" (lines 0)))))
 
 ;; ------

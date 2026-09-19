@@ -4,7 +4,7 @@
 
 - PHP `>=8.4` with the PDO extension and the driver you target (`pdo_sqlite`, `pdo_mysql`, `pdo_pgsql`, …).
 - [Composer](https://getcomposer.org/).
-- [Phel](https://phel-lang.org) `^0.41` (pulled in transitively).
+- [Phel](https://phel-lang.org) `^0.52` (pulled in transitively).
 
 Check your PDO drivers:
 

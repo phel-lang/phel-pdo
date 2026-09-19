@@ -1,6 +1,6 @@
 # Architecture
 
-phel-pdo is a single-namespace, two-struct wrapper around `\PDO` and `\PDOStatement`. The goal: callers never write `php/->` themselves.
+phel-pdo is a single-namespace, two-struct wrapper around `\PDO` and `\PDOStatement`. The goal: callers never write `.method` interop themselves.
 
 ## Layout
 
@@ -53,8 +53,8 @@ would be worse than none.
 Field access is plain keyword lookup (`(conn :pdo)`, `(stmt :stmt)`). The PHP boundary is always crossed inside the wrapper:
 
 ```clojure
-(php/-> (conn :pdo)  (exec sql))
-(php/-> (stmt :stmt) (fetch \PDO/FETCH_ASSOC))
+(.exec (conn :pdo) sql)
+(.fetch (stmt :stmt) \PDO/FETCH_ASSOC)
 ```
 
 ## Conventions

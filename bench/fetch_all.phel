@@ -40,8 +40,7 @@
           seqd    (bench "pdo/statement-seq (realised)"
                          (fn [] (count (into [] (pdo/statement-seq (pdo/query conn "select * from big"))))))
           raw     (bench "raw PDO::fetchAll (floor)"
-                         (fn [] (php/count (php/-> (php/-> (conn :pdo) (query "select * from big"))
-                                                   (fetchAll \PDO/FETCH_ASSOC)))))]
+                         (fn [] (php/count (.fetchAll (.query (conn :pdo) "select * from big") \PDO/FETCH_ASSOC))))]
       (println (str "\nfetch-all         " (php/round (/ wrapped raw) 1) "x the raw PDO floor"))
       (println (str "fetch-all :rows   " (php/round (/ rowsy raw) 1) "x the raw PDO floor"))
       (println (str "statement-seq     " (php/round (/ seqd raw) 1) "x the raw PDO floor"))

@@ -18,8 +18,8 @@
   [stmt]
   (let [s (stmt-handle stmt)]
     (try
-      (into [] (for [i :range [0 (php/-> s (columnCount))]]
-                 (keyword (php/aget (php/-> s (getColumnMeta i)) "name"))))
+      (into [] (for [i :range [0 (.columnCount s)]]
+                 (keyword (php/aget (.getColumnMeta s i) "name"))))
       (catch \Throwable _e nil))))
 
 (defn- num-row->map
@@ -32,7 +32,7 @@
 (defn fetch
   "Fetches the next row from a result set, or nil if no more rows"
   [stmt]
-  (when-let [row (php/-> (stmt-handle stmt) (fetch \PDO/FETCH_ASSOC))]
+  (when-let [row (.fetch (stmt-handle stmt) \PDO/FETCH_ASSOC)]
     (row->map row)))
 
 (defn fetch-column
@@ -40,16 +40,16 @@
   (nil by default) once the cursor is exhausted. A SQL NULL column reads back as nil,
   so pass a distinct not-found value when you need to tell the two apart"
   [stmt & [column not-found]]
-  (let [row (php/-> (stmt-handle stmt) (fetch \PDO/FETCH_NUM))
+  (let [row (.fetch (stmt-handle stmt) \PDO/FETCH_NUM)
         idx (or column 0)]
     (cond
       ;; PDO signals an exhausted cursor with false; a row is always an array,
       ;; so this stays unambiguous even for a column holding a real false.
       (php/=== row false) not-found
       (php/array_key_exists idx row) (php->phel (php/aget row idx))
-      (throw (php/new \InvalidArgumentException
-                      (str "fetch-column: column index " idx " out of range, row has "
-                           (php/count row) " column(s)"))))))
+      (throw (new \InvalidArgumentException
+                  (str "fetch-column: column index " idx " out of range, row has "
+                       (php/count row) " column(s)"))))))
 
 (defn column-names
   "Returns the result set's column names as a vector of keywords, in select order,
@@ -58,10 +58,10 @@
   (column-keywords stmt))
 
 (defn- fetch-num-rows [stmt]
-  (or (php/-> (stmt-handle stmt) (fetchAll \PDO/FETCH_NUM)) []))
+  (or (.fetchAll (stmt-handle stmt) \PDO/FETCH_NUM) []))
 
 (defn- fetch-assoc-rows [stmt]
-  (or (php/-> (stmt-handle stmt) (fetchAll \PDO/FETCH_ASSOC)) []))
+  (or (.fetchAll (stmt-handle stmt) \PDO/FETCH_ASSOC) []))
 
 (defn- rows-as-maps [stmt ks]
   (if ks
@@ -91,18 +91,18 @@
     (case as
       :maps (rows-as-maps stmt ks)
       :rows (rows-as-columns stmt ks)
-      (throw (php/new \InvalidArgumentException
-                      (str "fetch-all :as must be :maps or :rows, got " as))))))
+      (throw (new \InvalidArgumentException
+                  (str "fetch-all :as must be :maps or :rows, got " as))))))
 
 (defn- num-row-seq [stmt ks]
   (lazy-seq
-   (when-let [row (php/-> (stmt-handle stmt) (fetch \PDO/FETCH_NUM))]
-     (cons (num-row->map ks row) (num-row-seq stmt ks)))))
+    (when-let [row (.fetch (stmt-handle stmt) \PDO/FETCH_NUM)]
+      (cons (num-row->map ks row) (num-row-seq stmt ks)))))
 
 (defn- assoc-row-seq [stmt]
   (lazy-seq
-   (when-let [row (fetch stmt)]
-     (cons row (assoc-row-seq stmt)))))
+    (when-let [row (fetch stmt)]
+      (cons row (assoc-row-seq stmt)))))
 
 (defn statement-seq
   "Returns a lazy seq of the statement's remaining rows as maps, fetched one at a
@@ -116,9 +116,8 @@
 (defn fetch-object
   "Fetches the next row as an object (stdClass by default, or an instance of class-name), or nil if no more rows"
   [stmt & [class-name ctor-args]]
-  (when-let [obj (php/-> (stmt-handle stmt)
-                         (fetchObject (or class-name "stdClass")
-                                      (phel->php (or ctor-args []))))]
+  (when-let [obj (.fetchObject (stmt-handle stmt) (or class-name "stdClass")
+                               (phel->php (or ctor-args [])))]
     obj))
 
 (declare bind-value)
@@ -133,13 +132,13 @@
     (if (map? params)
       (dofor [[k v] :pairs params] (bind-value stmt k v))
       (dofor [[i v] :pairs params] (bind-value stmt (inc i) v))))
-  (php/-> (stmt-handle stmt) (execute))
+  (.execute (stmt-handle stmt))
   stmt)
 
 (defn close-cursor
   "Closes the cursor, enabling the statement to be executed again"
   [stmt]
-  (php/-> (stmt-handle stmt) (closeCursor))
+  (.closeCursor (stmt-handle stmt))
   stmt)
 
 (defn ^bool next-rowset
@@ -147,7 +146,7 @@
   rowset is available, false when none remain. Throws PDOException on drivers
   that don't support multiple rowsets (e.g. SQLite)"
   [stmt]
-  (php/-> (stmt-handle stmt) (nextRowset)))
+  (.nextRowset (stmt-handle stmt)))
 
 (defn set-fetch-mode
   "Sets the default fetch mode for the statement. Extra args match the mode
@@ -157,27 +156,27 @@
   [stmt mode & args]
   (let [s (stmt-handle stmt)]
     (case (count args)
-      0 (php/-> s (setFetchMode mode))
-      1 (php/-> s (setFetchMode mode (phel->php (first args))))
-      2 (php/-> s (setFetchMode mode (phel->php (first args)) (phel->php (second args))))
-      (throw (php/new \InvalidArgumentException
-                      (str "set-fetch-mode accepts at most 2 extra args, got " (count args))))))
+      0 (.setFetchMode s mode)
+      1 (.setFetchMode s mode (phel->php (first args)))
+      2 (.setFetchMode s mode (phel->php (first args)) (phel->php (second args)))
+      (throw (new \InvalidArgumentException
+                  (str "set-fetch-mode accepts at most 2 extra args, got " (count args))))))
   stmt)
 
 (defn ^int column-count
   "Returns the number of columns in the result set"
   [stmt]
-  (php/-> (stmt-handle stmt) (columnCount)))
+  (.columnCount (stmt-handle stmt)))
 
 (defn ^int row-count
   "Returns the number of rows affected by the last SQL statement"
   [stmt]
-  (php/-> (stmt-handle stmt) (rowCount)))
+  (.rowCount (stmt-handle stmt)))
 
 (defn column-meta
   "Returns metadata for a 0-indexed column in the result set as a map, or nil if unavailable"
   [stmt column]
-  (when-let [meta (php/-> (stmt-handle stmt) (getColumnMeta column))]
+  (when-let [meta (.getColumnMeta (stmt-handle stmt) column)]
     (row->map meta)))
 
 (defn- param-key
@@ -201,8 +200,7 @@
   The PDO type is inferred from the value - nil, booleans and ints get PARAM_NULL,
   PARAM_BOOL and PARAM_INT - unless an explicit type is given"
   [stmt column value & [type]]
-  (php/-> (stmt-handle stmt)
-          (bindValue (param-key column) value (or type (infer-param-type value))))
+  (.bindValue (stmt-handle stmt) (param-key column) value (or type (infer-param-type value)))
   stmt)
 
 (defn bind-param
@@ -211,15 +209,14 @@
   by-reference bindParam there is nothing to mutate before execute - for fresh
   values per run, re-bind or pass a params map to execute"
   [stmt column value & [type]]
-  (php/-> (stmt-handle stmt)
-          (bindParam (param-key column) value (or type (infer-param-type value))))
+  (.bindParam (stmt-handle stmt) (param-key column) value (or type (infer-param-type value)))
   stmt)
 
 (defn ^string debug-dump-params
   "Returns an SQL prepared command"
   [stmt]
   (php/ob_start)
-  (php/-> (stmt-handle stmt) (debugDumpParams))
+  (.debugDumpParams (stmt-handle stmt))
   (php/ob_get_clean))
 
 ;;; ---------------------------------------------------------------------------
@@ -251,8 +248,8 @@
     (let [k (keyword (name column))
           i (and ks (index-of ks k))]
       (or i
-          (throw (php/new \InvalidArgumentException
-                          (str "fetch-bound: no column named " k " in the result set")))))))
+          (throw (new \InvalidArgumentException
+                      (str "fetch-bound: no column named " k " in the result set")))))))
 
 (defn bind-column
   "Binds a result column to an atom, refreshed by every fetch-bound. column is a
@@ -263,7 +260,7 @@
   PDOStatement::bindColumn: that binds a PHP variable by reference, and Phel has
   no by-reference locals to give it"
   [stmt column target]
-  (put stmt :bindings (put (or (stmt :bindings) {}) column target)))
+  (assoc stmt :bindings (assoc (or (stmt :bindings) {}) column target)))
 
 (defn ^bool fetch-bound
   "Fetches the next row and resets every atom bound with bind-column. Returns true
@@ -272,7 +269,7 @@
   [stmt]
   (let [bindings (or (stmt :bindings) {})
         ks       (column-keywords stmt)
-        row      (php/-> (stmt-handle stmt) (fetch \PDO/FETCH_NUM))]
+        row      (.fetch (stmt-handle stmt) \PDO/FETCH_NUM)]
     (if (php/=== row false)
       false
       (let [values (php->phel row)]
