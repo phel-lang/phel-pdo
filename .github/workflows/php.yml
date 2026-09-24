@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-version: ['8.4', '8.5']
+        php-version: ['8.5']
 
     steps:
     - uses: actions/checkout@v4
@@ -53,7 +53,7 @@ jobs:
   # multi-rowset statements, driver-specific SQLSTATEs and quoting. SQLite is
   # lenient in ways these are not.
   mysql:
-    name: mysql / PHP 8.4
+    name: mysql / PHP 8.5
     runs-on: ubuntu-latest
 
     services:
@@ -76,16 +76,16 @@ jobs:
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.4'
+        php-version: '8.5'
         extensions: mbstring, pdo_mysql, pdo_sqlite
 
     - name: Cache Composer packages
       uses: actions/cache@v4
       with:
         path: vendor
-        key: ${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.lock') }}
+        key: ${{ runner.os }}-php-8.5-${{ hashFiles('**/composer.lock') }}
         restore-keys: |
-          ${{ runner.os }}-php-8.4-
+          ${{ runner.os }}-php-8.5-
 
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
@@ -98,7 +98,7 @@ jobs:
       run: composer run-script test
 
   pgsql:
-    name: pgsql / PHP 8.4
+    name: pgsql / PHP 8.5
     runs-on: ubuntu-latest
 
     services:
@@ -121,16 +121,16 @@ jobs:
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.4'
+        php-version: '8.5'
         extensions: mbstring, pdo_pgsql, pdo_sqlite
 
     - name: Cache Composer packages
       uses: actions/cache@v4
       with:
         path: vendor
-        key: ${{ runner.os }}-php-8.4-${{ hashFiles('**/composer.lock') }}
+        key: ${{ runner.os }}-php-8.5-${{ hashFiles('**/composer.lock') }}
         restore-keys: |
-          ${{ runner.os }}-php-8.4-
+          ${{ runner.os }}-php-8.5-
 
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
