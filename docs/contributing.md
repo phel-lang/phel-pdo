@@ -11,7 +11,7 @@ composer install
 composer test
 ```
 
-Requires PHP `>=8.4`. The test suite uses `sqlite::memory:` - no external DB needed.
+Requires PHP `>=8.5`. The test suite uses `sqlite::memory:` - no external DB needed.
 
 ## Editing Phel
 
