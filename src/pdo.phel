@@ -176,12 +176,12 @@
     (if-let [stmt (get cache sql)]
       ;; A reused statement may still hold the previous execute's cursor.
       (close-cursor stmt)
-      (let [stmt  (prepare conn sql)
-            evict (when (>= (count order) statement-cache-limit) (first order))
-            cache (-> (if evict (dissoc cache evict) cache) (assoc sql stmt))
-            order (-> (if evict (into [] (rest order)) order) (conj sql))]
-        (swap! (conn :state) (fn [s] (-> s (assoc :stmt-cache cache) (assoc :stmt-order order))))
-        stmt))))
+      (let [fresh      (prepare conn sql)
+            evict      (when (>= (count order) statement-cache-limit) (first order))
+            next-cache (-> (if evict (dissoc cache evict) cache) (assoc sql fresh))
+            next-order (-> (if evict (into [] (rest order)) order) (conj sql))]
+        (swap! (conn :state) (fn [s] (-> s (assoc :stmt-cache next-cache) (assoc :stmt-order next-order))))
+        fresh))))
 
 (defn ^string insert
   "Inserts a row built from a map into table and returns the new last-insert-id
@@ -207,9 +207,9 @@
   takes the same :as - :maps (default) gives a vector of maps, :rows gives
   {:cols [...] :rows [[...]]}. Releases the cursor before returning"
   [conn sql & [params options]]
-  (let [stmt (query conn sql params)
-        rows (fetch-all stmt options)
-        rows (if (map? rows) rows (into [] rows))]
+  (let [stmt    (query conn sql params)
+        fetched (fetch-all stmt options)
+        rows    (if (map? fetched) fetched (into [] fetched))]
     (close-cursor stmt)
     rows))
 
@@ -427,8 +427,8 @@
   The statement carries rows x columns placeholders, and drivers cap that
   (SQLITE_MAX_VARIABLE_NUMBER, MySQL's max_prepared_stmt_count). Chunk very large
   batches at the call site rather than relying on the driver to cope"
-  [conn table rows]
-  (let [rows (into [] rows)]
+  [conn table batch]
+  (let [rows (into [] batch)]
     (require-non-empty rows "insert-many rows")
     (let [ks      (into [] (keys (first rows)))
           cols    (into [] (for [k :in ks] (check-ident (name k))))
@@ -537,12 +537,12 @@
   "Binds name to conn for the duration of body and closes it afterwards, on a
   normal return and on a throw alike. Returns the last body value"
   [bindings & body]
-  (let [name (first bindings)
+  (let [sym  (first bindings)
         init (second bindings)]
-    `(let [~name ~init]
+    `(let [~sym ~init]
        (try
          (do ~@body)
-         (finally (close ~name))))))
+         (finally (close ~sym))))))
 
 (defn get-available-drivers
   "Return a vector of available PDO driver names. PDO::getAvailableDrivers is
