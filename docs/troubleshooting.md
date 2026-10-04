@@ -18,7 +18,7 @@ Then install the matching extension (e.g. `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`
 
 You forgot to `(require phel.pdo)`. Everything - connection-side and statement-side - lives under that single namespace.
 
-If `require` itself fails, your `phel-lang` version may be too old. phel-pdo needs phel-lang `^0.53`.
+If `require` itself fails, your `phel-lang` version may be too old. phel-pdo needs phel-lang `^0.54`.
 
 ## Bound integer matches as a string
 
