@@ -215,9 +215,7 @@
 (defn ^string debug-dump-params
   "Returns an SQL prepared command"
   [stmt]
-  (php/ob_start)
-  (.debugDumpParams (stmt-handle stmt))
-  (php/ob_get_clean))
+  (with-out-str (.debugDumpParams (stmt-handle stmt))))
 
 ;;; ---------------------------------------------------------------------------
 ;;; Bound columns

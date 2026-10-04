@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Require phel-lang ^0.54.
 - **Requires `phel-lang/phel-lang ^0.52`** (was `^0.41`). phel-lang `0.52.0` removed `php/new`, `php/->` and `php/::` as source (`PHEL012`), and `0.51.0`'s alias cleanup removed `put`, `push` and `values`. Source, tests, benchmarks and docs now use `(new \Foo ...)`, `(.method obj ...)`, `(\Foo/method ...)`, `assoc`, `conj` and `vals`. The public phel-pdo API is unchanged.
 
 ## [0.3.1] - 2026-07-25
