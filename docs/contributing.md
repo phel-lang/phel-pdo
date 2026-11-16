@@ -9,6 +9,7 @@ git clone https://github.com/phel-lang/phel-pdo.git
 cd phel-pdo
 composer install
 composer test
+composer lint
 ```
 
 Requires PHP `>=8.5`. The test suite uses `sqlite::memory:` - no external DB needed.
@@ -86,6 +87,14 @@ error reporting or cursors - SQLite is lenient in ways the others are not.
 - Reading an attribute is itself a successful PDO call and **clears the
   connection's error state**. Resolve `(driver conn)` *before* the statement whose
   error you mean to assert on.
+
+## Linting
+
+```bash
+composer lint     # vendor/bin/phel lint src tests bench
+```
+
+CI fails on any lint issue, warnings included. `phel lint` itself exits non-zero only on errors.
 
 ## Benchmarking
 

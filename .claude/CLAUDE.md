@@ -30,6 +30,7 @@ No PHP source. No PHPUnit. No rector / cs-fixer / phpstan.
 
 ```bash
 composer test     # vendor/bin/phel test
+composer lint     # vendor/bin/phel lint src tests bench (CI fails on any issue)
 ```
 
 `.phel` edits auto-format via PostToolUse hook (`vendor/bin/phel format`).

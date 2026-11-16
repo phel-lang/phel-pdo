@@ -14,13 +14,13 @@
 ;;   PHEL_PDO_USER=postgres PHEL_PDO_PASS=postgres \
 ;;   vendor/bin/phel run bench/insert_loop.phel
 
-(ns bench\insert-loop
+(ns bench.insert-loop
   (:require phel.pdo))
 
 (def- default-rows 2000)
 
-(defn- env-or [name fallback]
-  (let [v (php/getenv name)]
+(defn- env-or [var-name fallback]
+  (let [v (php/getenv var-name)]
     (if (or (php/=== v false) (= "" v)) fallback v)))
 
 (defn- ms [f]
@@ -43,13 +43,13 @@
 
     (let [built (ms (fn []
                       (pdo/with-transaction conn
-                                            (dofor [i :range [0 rows]]
+                                            (dofor [_ :range [0 rows]]
                                               (pdo/insert conn :bench_insert {:name "x"})))))
           _     (pdo/exec conn "delete from bench_insert")
           hand  (ms (fn []
                       (pdo/with-transaction conn
                                             (let [stmt (pdo/prepare conn "insert into bench_insert (name) values (:name)")]
-                                              (dofor [i :range [0 rows]]
+                                              (dofor [_ :range [0 rows]]
                                                 (pdo/execute stmt {:name "x"}))))))]
       (println (php/str_pad (str rows " x pdo/insert") 36) (str built " ms"))
       (println (php/str_pad (str rows " x execute on one prepare") 36) (str hand " ms"))
