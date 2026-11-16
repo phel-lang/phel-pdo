@@ -12,7 +12,7 @@ SQLite, MySQL and PostgreSQL.
 composer require phel-lang/phel-pdo
 ```
 
-Requires PHP `>=8.5` and `phel-lang/phel-lang ^0.54`.
+Requires PHP `>=8.5` and `phel-lang/phel-lang ^1.0.0-rc3`.
 
 Your project needs a `phel-config.php`, as any Phel project does - that is how
 Phel finds both your sources and your dependencies' namespaces:
