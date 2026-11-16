@@ -33,6 +33,9 @@
     "scripts": {
         "test": [
             "vendor/bin/phel test"
+        ],
+        "lint": [
+            "vendor/bin/phel lint src tests bench"
         ]
     }
 }

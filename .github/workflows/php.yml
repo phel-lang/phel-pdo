@@ -49,6 +49,13 @@ jobs:
     - name: Run test suite
       run: composer run-script test
 
+    # phel lint exits non-zero only on errors; warnings fail the build here too.
+    - name: Lint
+      run: |
+        out=$(vendor/bin/phel lint src tests bench --no-cache 2>&1)
+        echo "$out"
+        echo "$out" | grep -qx "No lint issues found."
+
   # The drivers where the interesting behaviour lives: emulated prepares,
   # multi-rowset statements, driver-specific SQLSTATEs and quoting. SQLite is
   # lenient in ways these are not.
