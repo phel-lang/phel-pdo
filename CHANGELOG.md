@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Require phel-lang ^1.0.0-rc3. This also accepts 1.0.0 stable.
+
 ## [0.4.0] - 2026-10-04
 
 ### Changed
