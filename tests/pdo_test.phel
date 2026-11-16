@@ -12,8 +12,8 @@
 ;; server. Point PHEL_PDO_DSN at MySQL or PostgreSQL to run the same tests there -
 ;; see docs/contributing.md. CI does all three.
 
-(defn- env-or [name fallback]
-  (let [v (php/getenv name)]
+(defn- env-or [var-name fallback]
+  (let [v (php/getenv var-name)]
     (if (or (php/=== v false) (= "" v)) fallback v)))
 
 (defn- test-dsn [] (env-or "PHEL_PDO_DSN" "sqlite::memory:"))
@@ -40,16 +40,16 @@
     "pgsql" "id serial primary key"
     "id integer primary key autoincrement"))
 
-(defn- drop-table [conn name]
-  (pdo/exec conn (str "drop table if exists " name)))
+(defn- drop-table [conn table]
+  (pdo/exec conn (str "drop table if exists " table)))
 
 (defn- create-t1 [conn]
   (drop-table conn "t1")
   (pdo/exec conn (str "create table t1 (" (autoincrement-ddl conn) ", name varchar(64))")))
 
-(defn- insert-name [conn name]
+(defn- insert-name [conn row-name]
   (-> (pdo/prepare conn "insert into t1 (name) values (:name)")
-      (pdo/execute {:name name})
+      (pdo/execute {:name row-name})
       (pdo/row-count)))
 
 (defn- seed-t1
@@ -439,28 +439,28 @@
   (create-t1 *conn*)
   (insert-name *conn* "phel")
   (insert-name *conn* "php")
-  (let [id   (atom nil)
-        name (atom nil)
-        stmt (-> (pdo/prepare *conn* "select id, name from t1 order by id")
+  (let [id       (atom nil)
+        row-name (atom nil)
+        stmt     (-> (pdo/prepare *conn* "select id, name from t1 order by id")
                  (pdo/execute)
                  (pdo/bind-column 1 id)
-                 (pdo/bind-column 2 name))]
+                 (pdo/bind-column 2 row-name))]
     (is (= true (pdo/fetch-bound stmt)))
-    (is (= [1 "phel"] [(deref id) (deref name)]))
+    (is (= [1 "phel"] [(deref id) (deref row-name)]))
     (is (= true (pdo/fetch-bound stmt)))
-    (is (= [2 "php"] [(deref id) (deref name)]))
+    (is (= [2 "php"] [(deref id) (deref row-name)]))
     (testing "exhausted cursor returns false and leaves the atoms alone"
              (is (= false (pdo/fetch-bound stmt)))
-             (is (= [2 "php"] [(deref id) (deref name)])))))
+             (is (= [2 "php"] [(deref id) (deref row-name)])))))
 
 (deftest bind-column-binds-by-name
   (seed-t1 *conn*)
-  (let [name (atom nil)
-        stmt (-> (pdo/prepare *conn* "select id, name from t1")
+  (let [row-name (atom nil)
+        stmt     (-> (pdo/prepare *conn* "select id, name from t1")
                  (pdo/execute)
-                 (pdo/bind-column :name name))]
+                 (pdo/bind-column :name row-name))]
     (pdo/fetch-bound stmt)
-    (is (= "phel" (deref name)))))
+    (is (= "phel" (deref row-name)))))
 
 (deftest bind-column-threads-and-returns-a-statement
   (seed-t1 *conn*)
@@ -487,12 +487,12 @@
 (deftest bind-column-reads-null-as-nil
   (create-t1 *conn*)
   (pdo/exec *conn* "insert into t1 (name) values (null)")
-  (let [name (atom :unset)
-        stmt (-> (pdo/prepare *conn* "select name from t1")
+  (let [row-name (atom :unset)
+        stmt     (-> (pdo/prepare *conn* "select name from t1")
                  (pdo/execute)
-                 (pdo/bind-column 1 name))]
+                 (pdo/bind-column 1 row-name))]
     (pdo/fetch-bound stmt)
-    (is (nil? (deref name)))))
+    (is (nil? (deref row-name)))))
 
 (deftest bind-column-rejects-an-unknown-column
   (seed-t1 *conn*)
@@ -1021,26 +1021,26 @@
 
 (deftest execute-with-map-params
   (seed-t1 *conn*)
-  (let [stmt (pdo/prepare *conn* "select count(*) from t1 where id = :id")
-        stmt (pdo/execute stmt {:id 1})]
+  (let [stmt (-> (pdo/prepare *conn* "select count(*) from t1 where id = :id")
+                 (pdo/execute {:id 1}))]
     (is (= 1 (pdo/fetch-column stmt)))))
 
 (deftest bind-value
   (seed-t1 *conn*)
   (testing "inferred type"
-           (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
-                 stmt (pdo/bind-value stmt :id 1)
-                 stmt (pdo/execute stmt)]
+           (let [stmt (-> (pdo/prepare *conn* "select * from t1 where id = :id")
+                          (pdo/bind-value :id 1)
+                          (pdo/execute))]
              (is (= {:id 1, :name "phel"} (pdo/fetch stmt)))))
   (testing "explicit int type"
-           (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
-                 stmt (pdo/bind-value stmt :id 1 \PDO/PARAM_INT)
-                 stmt (pdo/execute stmt)]
+           (let [stmt (-> (pdo/prepare *conn* "select * from t1 where id = :id")
+                          (pdo/bind-value :id 1 \PDO/PARAM_INT)
+                          (pdo/execute))]
              (is (= {:id 1, :name "phel"} (pdo/fetch stmt)))))
   (testing "explicit string type"
-           (let [stmt (pdo/prepare *conn* "select * from t1 where name = :name")
-                 stmt (pdo/bind-value stmt :name "phel" \PDO/PARAM_STR)
-                 stmt (pdo/execute stmt)]
+           (let [stmt (-> (pdo/prepare *conn* "select * from t1 where name = :name")
+                          (pdo/bind-value :name "phel" \PDO/PARAM_STR)
+                          (pdo/execute))]
              (is (= {:id 1, :name "phel"} (pdo/fetch stmt))))))
 
 ;; PDO type constants as debug-dump-params reports them:
@@ -1115,48 +1115,49 @@
 (deftest bind-param
   (seed-t1 *conn*)
   (testing "default (string) type"
-           (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
-                 stmt (pdo/bind-param stmt :id 1)
-                 stmt (pdo/execute stmt)]
+           (let [stmt (-> (pdo/prepare *conn* "select * from t1 where id = :id")
+                          (pdo/bind-param :id 1)
+                          (pdo/execute))]
              (is (= {:id 1, :name "phel"} (pdo/fetch stmt)))))
   (testing "explicit int type"
-           (let [stmt (pdo/prepare *conn* "select * from t1 where id = :id")
-                 stmt (pdo/bind-param stmt :id 1 \PDO/PARAM_INT)
-                 stmt (pdo/execute stmt)]
+           (let [stmt (-> (pdo/prepare *conn* "select * from t1 where id = :id")
+                          (pdo/bind-param :id 1 \PDO/PARAM_INT)
+                          (pdo/execute))]
              (is (= {:id 1, :name "phel"} (pdo/fetch stmt))))))
 
 (deftest bind-value-by-positional-index
   (seed-t1 *conn*)
   ;; integer column is a 1-based positional placeholder, kept as an int (not "1")
-  (let [stmt (pdo/prepare *conn* "select * from t1 where id = ?")
-        stmt (pdo/bind-value stmt 1 1 \PDO/PARAM_INT)
-        stmt (pdo/execute stmt)]
+  (let [stmt (-> (pdo/prepare *conn* "select * from t1 where id = ?")
+                 (pdo/bind-value 1 1 \PDO/PARAM_INT)
+                 (pdo/execute))]
     (is (= {:id 1, :name "phel"} (pdo/fetch stmt)))))
 
 (deftest close-cursor-allows-re-execution
   (seed-t1 *conn*)
-  (let [stmt (pdo/prepare *conn* "select name from t1 where id = :id")
-        stmt (pdo/execute stmt {:id 1})
-        _    (pdo/fetch stmt)
-        stmt (pdo/close-cursor stmt)
-        stmt (pdo/execute stmt {:id 1})]
-    (is (= "phel" (pdo/fetch-column stmt)))))
+  (let [stmt  (-> (pdo/prepare *conn* "select name from t1 where id = :id")
+                  (pdo/execute {:id 1}))
+        _     (pdo/fetch stmt)
+        rerun (-> stmt
+                  (pdo/close-cursor)
+                  (pdo/execute {:id 1}))]
+    (is (= "phel" (pdo/fetch-column rerun)))))
 
 ;; set-fetch-mode changes the statement's *native* default fetch mode. pdo/fetch
 ;; and pdo/fetch-all always request FETCH_ASSOC, so the only way to observe the
 ;; default is the raw PDOStatement::fetch - hence the (stmt :stmt) reach-through here.
 (deftest set-fetch-mode-column-returns-scalar
   (seed-t1 *conn*)
-  (let [stmt (pdo/prepare *conn* "select name from t1")
-        stmt (pdo/set-fetch-mode stmt \PDO/FETCH_COLUMN 0)
-        stmt (pdo/execute stmt)]
+  (let [stmt (-> (pdo/prepare *conn* "select name from t1")
+                 (pdo/set-fetch-mode \PDO/FETCH_COLUMN 0)
+                 (pdo/execute))]
     (is (= "phel" (.fetch (stmt :stmt))))))
 
 (deftest set-fetch-mode-num-returns-positional-row
   (seed-t1 *conn*)
-  (let [stmt (pdo/prepare *conn* "select id, name from t1")
-        stmt (pdo/set-fetch-mode stmt \PDO/FETCH_NUM)
-        stmt (pdo/execute stmt)]
+  (let [stmt (-> (pdo/prepare *conn* "select id, name from t1")
+                 (pdo/set-fetch-mode \PDO/FETCH_NUM)
+                 (pdo/execute))]
     (is (= [1 "phel"] (php->phel (.fetch (stmt :stmt)))))))
 
 (deftest next-rowset-on-a-single-rowset-statement
@@ -1219,8 +1220,8 @@
 
 (deftest debug-dump-params-emits-sql-header
   (seed-t1 *conn*)
-  (let [stmt  (pdo/prepare *conn* "select * from t1 where name = :name")
-        stmt  (pdo/bind-value stmt :name "phel" \PDO/PARAM_STR)
+  (let [stmt  (-> (pdo/prepare *conn* "select * from t1 where name = :name")
+                  (pdo/bind-value :name "phel" \PDO/PARAM_STR))
         info  (pdo/debug-dump-params stmt)
         lines (vals (php->phel (php/preg_split "/\r\n|\r|\n/" info)))]
     (is (= "SQL: [35] select * from t1 where name = :name" (lines 0)))))

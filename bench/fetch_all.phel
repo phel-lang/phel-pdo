@@ -7,7 +7,7 @@
 ;; change to row->map / column-keywords can be judged against a number instead of
 ;; a guess. Defaults to 20k rows x 5 columns on sqlite ::memory:.
 
-(ns bench\fetch-all
+(ns bench.fetch-all
   (:require phel.pdo))
 
 (def- default-rows 20000)
